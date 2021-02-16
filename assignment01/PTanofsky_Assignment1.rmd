@@ -6,6 +6,246 @@ date: "`r format(Sys.time(), '%d %B %Y')`"
 output: pdf_document
 ---
 
+```{r warning=F, message=F}
+library(palmerpenguins)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(caret)
+library(MASS)
+library(pROC)
+library(nnet) # Used for multinomial logistic regression
+library(stargazer)
+theme_set(theme_minimal())
+
+ds <- penguins
+
+head(ds)
+
+summary(ds)
+
+dim(ds)
+
+glimpse(ds)
+
+visdat::vis_dat(ds)
+
+# Penguins data has three factor variables
+ds %>%
+  dplyr::select(where(is.factor)) %>%
+  glimpse()
+
+# Count penguins for each species / island
+ds %>%
+  count(species, island, .drop=F)
+
+ggplot(ds, aes(x = island, fill = species)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~species, ncol = 1) +
+  coord_flip()
+
+# Count penguins for each species / sex
+ds %>%
+  count(species, sex, .drop = F)
+
+ggplot(ds, aes(x = sex, fill = species)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~species, ncol = 1) +
+  coord_flip()
+
+# Penguins data also has four continuous variables, making six unique scatterplots
+ds %>%
+  dplyr::select(body_mass_g, ends_with("_mm")) %>%
+  glimpse()
+
+# Scatterplot example 1: penguin flipper length versus body mass
+ggplot(data = penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
+  geom_point(aes(color = species,
+                 shape = species),
+             size = 2) +
+  scale_color_manual(values = c("darkorange", "darkorchid", "cyan4"))
+```
+
+```{r warning=F, message=F}
+ds %>%
+  dplyr::select(species, body_mass_g, ends_with("_mm")) %>%
+  GGally::ggpairs(aes(color = species)) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  scale_fill_manual(values = c("darkorange","purple","cyan4"))
+```
+
+```{r}
+# Create dataset for binary logistic regression: species Gentoo or Not
+data_binary <- penguins
+
+# Only use complete instances ... actually come back to this as I don't want to exclude because of sex 11 NAs
+train_data_binary <- na.omit(data_binary)
+
+dim(train_data_binary)
+```
+
+Based on the result, 11 rows are removed, which would equal the number of NAs in variable sex
+
+# Binary Logistic Regression
+
+```{r}
+# Create new column
+train_data_binary$gentoo <- ifelse(train_data_binary$species=="Gentoo", 1, 0)
+
+summary(train_data_binary)
+```
+
+```{r}
+# Drop species column, as now just using gentoo column as Y variable
+
+drops <- c("species")
+train_data_binary <- train_data_binary[ , !(names(train_data_binary) %in% drops)]
+
+summary(train_data_binary)
+```
+
+```{r warning=F}
+set.seed(123)
+trainIndex <-createDataPartition(train_data_binary$gentoo, p = 0.7, list = FALSE, times = 1)
+train <- train_data_binary[trainIndex,]
+test <- train_data_binary[-trainIndex,]
+```
+
+```{r warning=F}
+
+model1 <- glm(gentoo ~ ., data = train, family = "binomial"(link="logit")) %>% stepAIC(trace=F, direction ='both')
+summary(model1)
+```
+
+```{r warning=F}
+#mu<-predict(model1, type = "response")
+
+# calculate AIC
+mod1AIC <- model1$aic
+
+## use the test data set to make predicts and calculate metrics from the confusion matrix
+mod1.predict.probs <- predict.glm(model1, type="response", newdata=test)
+
+mod1.predict.manual <- ifelse(mod1.predict.probs > 0.5, '1','0')
+attach(test)
+
+mod1.predict.manual
+
+test$gentoo
+```
+
+```{r}
+
+# now can use the caret function
+cm.var <- caret::confusionMatrix(factor(mod1.predict.manual), factor(test$gentoo), positive='1')
+cm.var$table
+
+# print metrics
+mod1.CMmetrics <- c(cm.var$overall[c(1)], cm.var$byClass[c(1,2,5,6,7)])
+
+mod1.CMmetrics
+
+# ROC and AUC 
+par(pty="s")
+roc.stepwise <- roc(train$gentoo, model1$fitted.values, plot=TRUE, print.auc=TRUE)
+
+# Dispersion Statistic
+E2 <- resid(model1, type = "pearson")
+N  <- nrow(train)
+p  <- length(coef(model1)) + 1 # '+1' is due to theta
+mod1.dispersion <- dispesion <-sum(E2^2) / (N - p)
+
+```
+
+# Multinomial Logistic Regression
+
+```{r}
+# Initial walk-through: https://stats.idre.ucla.edu/r/dae/multinomial-logistic-regression/
+
+# Start with initial dateset
+mlr_data <- penguins
+
+summary(mlr_data)
+
+mlr_data$species2 <- relevel(mlr_data$species, ref = "Gentoo")
+test <- multinom(species2 ~ body_mass_g + bill_length_mm + bill_depth_mm + flipper_length_mm + island, data = mlr_data)
+
+summary(test)
+
+stargazer(test, type="text", out="test.htm")
+
+test.rrr = exp(coef(test))
+test.rrr
+
+stargazer(test, type="text", coef=list(test.rrr), p.auto=FALSE, out="testrrr.htm")
+```
+
+```{r}
+# Again with https://www.r-bloggers.com/2020/05/multinomial-logistic-regression-with-r/
+
+index <- createDataPartition(mlr_data$species, p = .70, list = FALSE)
+train <- mlr_data[index,]
+test <- mlr_data[-index,]
+
+# Set the reference 
+train$species <- relevel(train$species, ref = "Adelie")
+
+# Training the multinomial model
+multinom_model <- multinom(species ~ ., data = mlr_data)
+
+# Checking the model
+summary(multinom_model)
+
+# Convert the coefficients to odds by taking the exponential of the coefficients.
+exp(coef(multinom_model))
+
+head(round(fitted(multinom_model), 2))
+
+```
+
+```{r}
+# Predicting and validating the model
+
+# Predicting the values for train dataset
+train$speciesPredicted <- predict(multinom_model, newdata = train, "class")
+
+# Building classification table
+tab <- table(train$species, train$speciesPredicted)
+
+# Calculating accuracy - sum of diagonal elements divided by total obs
+round((sum(diag(tab))/sum(tab))*100,2)
+
+# Predicting the class for test dataset
+test$speciesPredicted <- predict(multinom_model, newdata = test, "class")
+
+# Building classification table
+tab <- table(test$species, test$speciesPredicted)
+tab
+```
+# Thoughts
+For binary, group Adelie and Chinstrap
+
+Sex doesn't matter, 
+Considering that I'm grouping Orange and Purple, probably don't use bill_length_mm, as that one shows purple and green have similar distribution
+
+## Variables
+species: of course (Y variable) ... Gentoo or Not Gentoo (No NA)
+island: consider it (No NA)
+bill_length_mm: don't use for binary (2 NAs)
+bill_depth_mm: use it (2 NAs)
+flipper_length_mm: use it (2 NAs)
+body_mass_g: use it (2 NAs)
+sex: nah (11 NAs)
+year: meh (No NA)
+
+
+# Prompt
 
 Data – 622
 Homework # 1
