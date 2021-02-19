@@ -6,6 +6,28 @@ date: "`r format(Sys.time(), '%d %B %Y')`"
 output: pdf_document
 ---
 
+# Introduction
+
+Data – 622
+Homework # 1
+Due date Feb 19, 2021- 11:59 EST
+Let’s use the Penguin dataset for our assignment. To learn more about the dataset, please visit:
+https://allisonhorst.github.io/palmerpenguins/articles/intro.html
+For this assignment, let us use ‘species’ as our outcome or the dependent variable.
+1. Logistic Regression with a binary outcome. (40)
+a. The penguin dataset has ‘species’ column. Please check how many categories
+you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).
+b. Please make sure you are evaluating the independent variables appropriately in deciding which ones should be in the model.
+c. Provide variable interpretations in your model.
+2. For your model from #1, please provide: AUC, Accuracy, TPR, FPR, TNR, FNR (20)
+3. Multinomial Logistic Regression. (40)
+a. Please fit it a multinomial logistic regression where your outcome variable is
+‘species’.
+b. Please be sure to evaluate the independent variables appropriately to fit your
+best parsimonious model.
+c. Please be sure to interpret your variables in the model.
+4. Extra credit: what would be some of the fit statistics you would want to evaluate for your model in question #3? Feel free to share whatever you can provide. (10)
+
 ```{r warning=F, message=F}
 library(palmerpenguins)
 library(dplyr)
@@ -130,7 +152,7 @@ train_data_binary <- train_data_binary[ , !(names(train_data_binary) %in% drops)
 summary(train_data_binary)
 ```
 
-In order to validate the models property, the initial penguins dataset is partitioned into training data at 70% of the given dataset with the remaining 30% used as test data completely unseen by the model.
+In order to validate the models properly, the initial penguins dataset is partitioned into training data at 70% of the given dataset with the remaining 30% used as test data completely unseen by the model.
 
 ```{r warning=F}
 set.seed(123)
@@ -146,7 +168,6 @@ Three versions of a binary logistic regression model are constructed in order to
 The first model uses all the available independent variables in order to define a baseline evaluation of the model.
 
 ```{r warning=F}
-
 # All variables
 model1 <- glm(gentoo ~ ., data = train, family = "binomial"(link="logit"))
 #Accuracy 100%, AIC is 18
@@ -181,7 +202,7 @@ summary(model3)
 
 Resulting AIC: `r model3$aic`.
 
-```{r warning=F}
+```{r warning=F, message=F}
 ## use the test data set to make predictions for the 3 models
 mod1.predict.probs <- predict.glm(model1, type="response", newdata=test)
 mod1.predict.manual <- ifelse(mod1.predict.probs > 0.5, '1','0')
@@ -283,6 +304,71 @@ p  <- length(coef(model3)) + 1 # '+1' is due to theta
 mod3.dispersion <- dispesion <-sum(E2^2) / (N - p)
 ```
 
+Looking at the summary results for the three models attempting to identify Gentoo species or not, I decided to make the goal a bit more difficult as Adelie species appears on all three islands, and statistically, the Adelie species does overlap with Chinstrap, I decided to create logistic regression models to identify Adelie instead of Gentoo.
+
+```{r warning=F,message=F}
+# Create dataset for binary logistic regression: species Adelie or Not
+data_binary <- penguins
+
+# Only use complete instances ... actually come back to this as I don't want to exclude because of sex 11 NAs
+train_data_binary <- na.omit(data_binary)
+
+train_data_binary$adelie <- ifelse(train_data_binary$species=="Adelie", 1, 0)
+
+summary(train_data_binary)
+
+drops <- c("species")
+train_data_binary <- train_data_binary[ , !(names(train_data_binary) %in% drops)]
+
+set.seed(123)
+trainIndex <-createDataPartition(train_data_binary$adelie, p = 0.7, list = FALSE, times = 1)
+train <- train_data_binary[trainIndex,]
+test <- train_data_binary[-trainIndex,]
+
+# All variables
+model1_ad <- glm(adelie ~ ., data = train, family = "binomial"(link="logit"))
+summary(model1_ad)
+
+# All variables then applied with stepAIC
+model2_ad <- glm(adelie ~ ., data = train, family = "binomial"(link="logit")) %>% stepAIC(trace=F, direction ='both')
+summary(model2_ad)
+
+## use the test data set to make predictions for the 3 models
+mod1_ad.predict.probs <- predict.glm(model1_ad, type="response", newdata=test)
+mod1_ad.predict.manual <- ifelse(mod1_ad.predict.probs > 0.5, '1','0')
+attach(test)
+
+mod2_ad.predict.probs <- predict.glm(model2_ad, type="response", newdata=test)
+mod2_ad.predict.manual <- ifelse(mod2_ad.predict.probs > 0.5, '1','0')
+attach(test)
+
+# Model1
+# now can use the caret function
+cm.var <- caret::confusionMatrix(factor(mod1_ad.predict.manual), factor(test$adelie), positive='1')
+cm.var$table
+
+# print metrics
+mod1_ad.CMmetrics <- c(cm.var$overall[c(1)], cm.var$byClass[c(1,2,5,6,7)])
+mod1_ad.CMmetrics
+
+# ROC and AUC 
+par(pty="s")
+roc.stepwise <- roc(train$adelie, model1_ad$fitted.values, plot=TRUE, print.auc=TRUE)
+
+# Model2
+# now can use the caret function
+cm.var <- caret::confusionMatrix(factor(mod2_ad.predict.manual), factor(test$adelie), positive='1')
+cm.var$table
+
+# print metrics
+mod2_ad.CMmetrics <- c(cm.var$overall[c(1)], cm.var$byClass[c(1,2,5,6,7)])
+mod2_ad.CMmetrics
+
+# ROC and AUC 
+par(pty="s")
+roc.stepwise <- roc(train$adelie, model2_ad$fitted.values, plot=TRUE, print.auc=TRUE)
+```
+
 # Multinomial Logistic Regression
 
 ```{r warning=F}
@@ -330,9 +416,21 @@ multinom_model <- multinom(species ~ island + bill_depth_mm + bill_length_mm, da
 # Checking the model
 summary(multinom_model)
 
+z <- summary(multinom_model)$coefficients/summary(multinom_model)$standard.errors
+z
+
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+p
+
 # Convert the coefficients to odds by taking the exponential of the coefficients.
 exp(coef(multinom_model))
 
+head(pp <- fitted(multinom_model))
+
+#dses <- data.frame(ses = c("low", "middle", "high"), write = mean(ml$write))
+#predict(test, newdata = dses, "probs")
+
+# What is this?
 head(round(fitted(multinom_model), 2))
 
 ```
@@ -357,7 +455,9 @@ tab <- table(test$species, test$speciesPredicted)
 tab
 ```
 
+### Attempt at Extra Credit
 
+After some Internet searching, it appears there isn't much direction in how to measure model fit for multinomial logistic regression models. Pearson residual and Overdispersion are ways to measure the model. Approaches to comparing two or more models would include likelihood ratio test, wald test, cross validation and parallel lines assumption.
 
 Sex doesn't matter, 
 Considering that I'm grouping Orange and Purple, probably don't use bill_length_mm, as that one shows purple and green have similar distribution
@@ -367,25 +467,6 @@ Considering that I'm grouping Orange and Purple, probably don't use bill_length_
 
 # Prompt
 
-Data – 622
-Homework # 1
-Due date Feb 19, 2021- 11:59 EST
-Let’s use the Penguin dataset for our assignment. To learn more about the dataset, please visit:
-https://allisonhorst.github.io/palmerpenguins/articles/intro.html
-For this assignment, let us use ‘species’ as our outcome or the dependent variable.
-1. Logistic Regression with a binary outcome. (40)
-a. The penguin dataset has ‘species’ column. Please check how many categories
-you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).
-b. Please make sure you are evaluating the independent variables appropriately in deciding which ones should be in the model.
-c. Provide variable interpretations in your model.
-2. For your model from #1, please provide: AUC, Accuracy, TPR, FPR, TNR, FNR (20)
-3. Multinomial Logistic Regression. (40)
-a. Please fit it a multinomial logistic regression where your outcome variable is
-‘species’.
-b. Please be sure to evaluate the independent variables appropriately to fit your
-best parsimonious model.
-c. Please be sure to interpret your variables in the model.
-4. Extra credit: what would be some of the fit statistics you would want to evaluate for your model in question #3? Feel free to share whatever you can provide. (10)
  
  
  Considers for multinomial
