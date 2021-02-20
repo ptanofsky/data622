@@ -10,25 +10,6 @@ output: pdf_document
 
 The purpose of this project is to apply logistic regression approaches to the Palmer Penguin data set available at https://allisonhorst.github.io/palmerpenguins/articles/intro.html. The first approach performs binary logistic regression on the dataset in order to predict a species or not of the penguin subjects. The second approach utilizes all three species to perform a multinomial logistic regression in order to predict the species of penguin subjects. While the primary goal of the logistic regression is to predict the penguin species, statistical interpretation also presents the context for the prediction models.
 
-Data – 622
-Homework # 1
-Due date Feb 19, 2021- 11:59 EST
-Let’s use the Penguin dataset for our assignment. To learn more about the dataset, please visit:
-https://allisonhorst.github.io/palmerpenguins/articles/intro.html
-For this assignment, let us use ‘species’ as our outcome or the dependent variable.
-1. Logistic Regression with a binary outcome. (40)
-a. The penguin dataset has ‘species’ column. Please check how many categories
-you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).
-b. Please make sure you are evaluating the independent variables appropriately in deciding which ones should be in the model.
-c. Provide variable interpretations in your model.
-2. For your model from #1, please provide: AUC, Accuracy, TPR, FPR, TNR, FNR (20)
-3. Multinomial Logistic Regression. (40)
-a. Please fit it a multinomial logistic regression where your outcome variable is
-‘species’.
-b. Please be sure to evaluate the independent variables appropriately to fit your
-best parsimonious model.
-c. Please be sure to interpret your variables in the model.
-4. Extra credit: what would be some of the fit statistics you would want to evaluate for your model in question #3? Feel free to share whatever you can provide. (10)
 
 ```{r warning=F, message=F}
 # Import required R libraries
@@ -53,7 +34,7 @@ The palmer penguins dataset consists of 8 variables, 7 independent variables and
 
 - species: species of the penguin observed (dependent variable)
 
-- island: island of penguin's inhabitance
+- island: island of penguin's observation
 
 - bill_length_mm: penguin bill length in millimeters
 
@@ -85,7 +66,7 @@ glimpse(ds)
 visdat::vis_dat(ds)
 ```
 
-Initial summary outputs show 344 instances of the 8 variables. The final graph indicates the missing values among the 8 variables. Variables with missing values include $sex$, $bill_length_mm$, $bill_depth_mm$, $flipper_length_mm$ and $body_mass_g$.
+Initial summary outputs show 344 instances of the 8 variables. The final graph indicates the missing values among the 8 variables. Variables with missing values include $sex$, $bill\_length\_mm$, $bill\_depth\_mm$, $flipper\_length\_mm$ and $body\_mass\_g$.
 
 ```{r warning=F,message=F}
 # Penguins data has three factor variables
@@ -197,7 +178,7 @@ train <- train_data_binary[trainIndex,]
 test <- train_data_binary[-trainIndex,]
 ```
 
-Three versions of a binary logistic regression model are constructed in order to evaluate the accuracy of each and also provide to narrow the model to the least number of variables to identify the most parsimomious model.
+Three versions of a binary logistic regression model are constructed in order to evaluate the accuracy of each and also provide to narrow the model to the least number of variables to identify the most parsimonious model.
 
 ### Baseline Model
 
@@ -261,7 +242,7 @@ attach(test)
 
 Plots of the data to visualize the independent variable's value compared to the logit function of the dependent variable.
 
-First, plot the variable $flipper_length_mm$ against the logit value of the $Gentoo$ result.
+First, plot the variable $flipper\_length\_mm$ against the logit value of the $Gentoo$ result.
 
 ```{r warning=F,message=F}
 # Plot the dependent variable interpretation
@@ -273,7 +254,7 @@ g=glm(gentoo ~ flipper_length_mm, data = train, family = "binomial"(link="logit"
 curve(predict(g,data.frame(flipper_length_mm=x),type="resp"),add=TRUE)
 ```
 
-Second, plot the variable $bill_depth_mm$ against the logit value of the $Gentoo$ result.
+Second, plot the variable $bill\_depth\_mm$ against the logit value of the $Gentoo$ result.
 
 ```{r warning=F,message=F}
 # plot with bill_depth_mm on x-axis and Gentoo species (0 or 1) on y-axis
@@ -380,6 +361,22 @@ par(pty="s")
 roc.stepwise <- roc(train$gentoo, model3$fitted.values, plot=TRUE, print.auc=TRUE)
 ```
 
+### Variable Interpretation
+
+For Model 3 above, the variable interpretations are as follows.
+
+A one-unit increase in the variable $island$ for value $Dream$ is associated with the decrease in the log odds of being in species Gentoo in the amount of 1.39.
+
+A one-unit increase in the variable $island$ for value $Torgersen$ is associated with the decrease in the log odds of being in species Gentoo in the amount of 5.044.
+
+A one-unit increase in the variable $bill\_depth\_mm$ is associated with the decrease in the log odds of being in species Gentoo in the amount of 10.49.
+
+A one-unit increase in the variable $flipper\_length\_mm$ is associated with the increase in the log odds of being in species Gentoo in the amount of 1.098.
+
+A one-unit increase in the variable $body\_mass\_g$ is associated with the increase in the log odds of being in species Gentoo in the amount of .01958.
+
+## Alternate Binary Model
+
 Looking at the summary results for the three models attempting to identify Gentoo species or not, I decided to make the goal a bit more difficult as Adelie species appears on all three islands, and statistically, the Adelie species does overlap with Chinstrap, I decided to create logistic regression models to identify Adelie instead of Gentoo.
 
 The first model uses the same baseline model approach as above including all independent variables. The second model re-uses the $stepAIC$ approach to algorithmically select the best independent variables.
@@ -478,35 +475,22 @@ The $stepAIC$ model shows:
 
 - False Positive Rate (Fall-out: 1-TNR): 0
 
-Interestingly, the $stepAIC$ did not perform at 100% accuracy. The $stepAIC$ model indicates $bill_length_mm$, $bill_depth_mm$, and $body_mass_g$ are the three most predictive independent variables.
+Interestingly, the $stepAIC$ did not perform at 100% accuracy. The $stepAIC$ model indicates $bill\_length\_mm$, $bill\_depth\_mm$, and $body\_mass\_g$ are the three most predictive independent variables.
 
 # Multinomial Logistic Regression
 
 The following approach attempts to construct a multinomial logistic regression model based on a multivariate outcome. As the penguins dataset is based on a dependent variable (species) containing three values, these models attempt to predict the species of each penguin subject. 
 
-```{r warning=F, message=F}
-# Initial walk-through: https://stats.idre.ucla.edu/r/dae/multinomial-logistic-regression/
+## Model 1
 
-# Start with initial dateset
+The baseline model is attempted for the multinomial logistic regression to predict the penguin species.
+
+```{r warning=F,message=F}
+# using https://www.r-bloggers.com/2020/05/multinomial-logistic-regression-with-r/
+
 mlr_data <- penguins
 
-summary(mlr_data)
-
-mlr_data$species2 <- relevel(mlr_data$species, ref = "Gentoo")
-test <- multinom(species2 ~ body_mass_g + bill_length_mm + bill_depth_mm + flipper_length_mm + island, data = mlr_data)
-
-summary(test)
-
-stargazer(test, type="text", out="test.htm")
-
-test.rrr = exp(coef(test))
-test.rrr
-
-stargazer(test, type="text", coef=list(test.rrr), p.auto=FALSE, out="testrrr.htm")
-```
-
-```{r warning=F}
-# Again with https://www.r-bloggers.com/2020/05/multinomial-logistic-regression-with-r/
+mlr_data <- na.omit(mlr_data)
 
 index <- createDataPartition(mlr_data$species, p = .70, list = FALSE)
 train <- mlr_data[index,]
@@ -516,76 +500,154 @@ test <- mlr_data[-index,]
 train$species <- relevel(train$species, ref = "Adelie")
 
 # Training the multinomial model
-#multinom_model <- multinom(species ~ ., data = mlr_data)
-
-multinom_model <- multinom(species ~ island + bill_depth_mm + bill_length_mm, data = mlr_data)
-
-#multinom_model <- multinom(species ~ flipper_length_mm + body_mass_g, data = mlr_data)
-
-
-#with flipper length, and with body mass, will also get to one hundred accuracy
-# but these 3 are required for 100: island + bill_depth_mm + bill_length_mm
+multinom_model1 <- multinom(species ~ ., data = mlr_data)
 
 # Checking the model
-summary(multinom_model)
+summary(multinom_model1)
+```
 
-z <- summary(multinom_model)$coefficients/summary(multinom_model)$standard.errors
-z
+The final negative log-likelihood value of 0.000004 is produced by running the model. This value multiplied by two is then seen in the model summary as the Residual Deviance.
+
+```{r warning=F,message=F}
+stargazer(multinom_model1, type="text", out="multinom_model1.htm")
+```
+
+The $stargazer$ produces a clear table to view the coefficients of the independent variables in the model.
+
+```{r warning=F,message=F}
+z <- summary(multinom_model1)$coefficients/summary(multinom_model1)$standard.errors
+(z)
 
 p <- (1 - pnorm(abs(z), 0, 1)) * 2
-p
-
-# Convert the coefficients to odds by taking the exponential of the coefficients.
-exp(coef(multinom_model))
-
-head(pp <- fitted(multinom_model))
-
-#dses <- data.frame(ses = c("low", "middle", "high"), write = mean(ml$write))
-#predict(test, newdata = dses, "probs")
-
-# What is this?
-head(round(fitted(multinom_model), 2))
-
+(p)
 ```
+
+The above results of the 2-tailed z test show variables $island$, $bill\_length\_mm$, and $bill\_depth\_mm$ play no role in the prediction of the species for baseline model.
+
+```{r warning=F,message=F}
+# Convert the coefficients to odds by taking the exponential of the coefficients.
+exp(coef(multinom_model1))
+
+head(pp <- fitted(multinom_model1))
+```
+
+The above results indicate the species odds for each penguin observed.
 
 ```{r warning=F}
 # Predicting and validating the model
 
 # Predicting the values for train dataset
-train$speciesPredicted <- predict(multinom_model, newdata = train, "class")
+train$speciesPredicted <- predict(multinom_model1, newdata = train, "class")
 
 # Building classification table
 tab <- table(train$species, train$speciesPredicted)
 
 # Calculating accuracy - sum of diagonal elements divided by total obs
 round((sum(diag(tab))/sum(tab))*100,2)
+```
 
+The accuracy of the predictions against the initial training dataset is 100%.
+
+```{r warning=F,message=F}
 # Predicting the class for test dataset
-test$speciesPredicted <- predict(multinom_model, newdata = test, "class")
+test$speciesPredicted <- predict(multinom_model1, newdata = test, "class")
 
 # Building classification table
 tab <- table(test$species, test$speciesPredicted)
 tab
 ```
 
+The output table for the predictions of the test dataset show 100% accuracy, also.
+
+## Model 2
+
+Given the results of the baseline model and desire to great a parsimonious model, the below model uses independent variables selected based on value to the model.
+
+```{r warning=F,message=F}
+index <- createDataPartition(mlr_data$species, p = .70, list = FALSE)
+train <- mlr_data[index,]
+test <- mlr_data[-index,]
+
+# Set the reference 
+train$species <- relevel(train$species, ref = "Adelie")
+
+# Training the multinomial model
+multinom_model2 <- multinom(species ~ island + bill_depth_mm + bill_length_mm, data = mlr_data)
+
+# Checking the model
+summary(multinom_model2)
+```
+
+The final negative log-likelihood value of 0.073060 is produced by running the model. This value multiplied by two (0.1461206) is then seen in the model summary as the Residual Deviance.
+
+### Variable Interpretation
+
+- A one-unit increase in the variable bill_depth_mm is associated with the decrease in the log odds of being a Chinstrap species vs. Adelie species in the amount of 16.84742.
+
+- A one-unit increase in the variable bill_depth_mm is associated with the decrease in the log odds of being a Gentoo species vs. Adelie species in the amount of 24.91635.
+
+- A one-unit increase in the variable bill_length_mm is associated with the increase in the log odds of being a Chinstrap species vs. Adelie species in the amount of 9.933821.
+
+- A one-unit increase in the variable bill_length_mm is associated with the increase in the log odds of being a Gentoo species vs. Adelie species in the amount of 10.469682.
+
+- The log odds of being a Chinstrap species vs. Adelie species will increase by 1.288634 if moving from island Biscoe to island Dream.
+
+- The log odds of being a Chinstrap species vs. Adelie species will decrease by -33.22371 if moving from island Biscoe to island Torgersen.
+
+- The log odds of being a Gentoo species vs. Adelie species will decrease by 20.848914 if moving from island Biscoe to island Dream.
+
+- The log odds of being a Gentoo species vs. Adelie species will decrease by 18.53702 if moving from island Biscoe to island Torgersen.
+
+```{r warning=F,message=F}
+z <- summary(multinom_model2)$coefficients/summary(multinom_model2)$standard.errors
+(z)
+
+# 2-tailed z test
+p <- (1 - pnorm(abs(z), 0, 1)) * 2
+(p)
+```
+
+The above results of the 2-tailed z test show each selected independent variable plays a factor in the prediction of the species for the second model.
+
+```{r warning=F,message=F}
+# Convert the coefficients to odds by taking the exponential of the coefficients.
+exp(coef(multinom_model2))
+
+head(pp <- fitted(multinom_model2))
+```
+
+Again, the first six rows are displayed to show the probabilities of the species for each penguin observed.
+
+```{r warning=F,message=F}
+# Predicting and validating the model
+
+# Predicting the values for train dataset
+train$speciesPredicted <- predict(multinom_model2, newdata = train, "class")
+
+# Building classification table
+tab <- table(train$species, train$speciesPredicted)
+
+# Calculating accuracy - sum of diagonal elements divided by total obs
+round((sum(diag(tab))/sum(tab))*100,2)
+```
+
+As in the baseline model, the accuracy of the predictions against the initial training dataset is 100%.
+
+```{r warning=F,message=F}
+# Predicting the class for test dataset
+test$speciesPredicted <- predict(multinom_model2, newdata = test, "class")
+
+# Building classification table
+tab <- table(test$species, test$speciesPredicted)
+tab
+```
+
+And fortunately, the output table for the predictions of the test dataset show 100% accuracy, also. As this model relies on just three independent variables ($island$, $bill\_depth\_mm$, and $bill\_length\_mm$), the hand-selected model proves to be the best parsimonious model.
+
 ### Attempt at Extra Credit
 
-After some Internet searching, it appears there isn't much direction in how to measure model fit for multinomial logistic regression models. Pearson residual and Overdispersion are ways to measure the model. Approaches to comparing two or more models would include likelihood ratio test, wald test, cross validation and parallel lines assumption.
-
-Sex doesn't matter, 
-Considering that I'm grouping Orange and Purple, probably don't use bill_length_mm, as that one shows purple and green have similar distribution
+After some Internet searching, it appears there isn't much direction in how to measure model fit for multinomial logistic regression models. Pearson residual and overdispersion are ways to measure the model. Approaches to comparing two or more models would include likelihood ratio test, Wald test, cross validation, and parallel lines assumption.
 
 # Conclusion
 
-
-# Prompt
-
- 
- 
- Considers for multinomial
- wald test
- LR test: likelihood ratio
- Cross validation
- parallel lines assumption
- 
- Ideas here: https://stats.stackexchange.com/questions/145203/how-to-assess-if-a-model-is-good-in-multinomial-logistic-regression
+Overall, the simplicity of the palmer penguins dataset allowed for the creation of highly accurate binary and multinomial logistic regression models. Even with the purposely more difficult binary prediction, the model still performed well. The variable interpretation provided gives a clear picture of the weights by each selected variable impacts the model. Given the lack of clear fit evaluation for the multinomial model, I do think further analysis is warranted to ensure the model fit is reasonable.
