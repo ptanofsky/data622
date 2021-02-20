@@ -8,6 +8,8 @@ output: pdf_document
 
 # Introduction
 
+The purpose of this project is to apply logistic regression approaches to the Palmer Penguin data set available at https://allisonhorst.github.io/palmerpenguins/articles/intro.html. The first approach performs binary logistic regression on the dataset in order to predict a species or not of the penguin subjects. The second approach utilizes all three species to perform a multinomial logistic regression in order to predict the species of penguin subjects. While the primary goal of the logistic regression is to predict the penguin species, statistical interpretation also presents the context for the prediction models.
+
 Data – 622
 Homework # 1
 Due date Feb 19, 2021- 11:59 EST
@@ -29,6 +31,7 @@ c. Please be sure to interpret your variables in the model.
 4. Extra credit: what would be some of the fit statistics you would want to evaluate for your model in question #3? Feel free to share whatever you can provide. (10)
 
 ```{r warning=F, message=F}
+# Import required R libraries
 library(palmerpenguins)
 library(dplyr)
 library(ggplot2)
@@ -40,22 +43,35 @@ library(nnet) # Used for multinomial logistic regression
 library(mlogit)
 library(stargazer)
 library(popbio)
+# Set theme, based on the Penguin vignettes
 theme_set(theme_minimal())
 ```
 
 The palmer penguins dataset consists of 8 variables, 7 independent variables and 1 dependent variable (species).
 
 ## Variables
-species: species of the penguin observed
-island: consider it (No NA)
-bill_length_mm: penguin bill length in millimeters
-bill_depth_mm: penguin bill depth in millimeters
-flipper_length_mm: penguin flipper length in millimeters
-body_mass_g: penguin body mass in grams
-sex: penguin sex
-year: year of observation
 
-```{r}
+- species: species of the penguin observed (dependent variable)
+
+- island: island of penguin's inhabitance
+
+- bill_length_mm: penguin bill length in millimeters
+
+- bill_depth_mm: penguin bill depth in millimeters
+
+- flipper_length_mm: penguin flipper length in millimeters
+
+- body_mass_g: penguin body mass in grams
+
+- sex: penguin sex
+
+- year: year of observation
+
+## EDA
+
+Initial data summary and exploratory data analysis.
+
+```{r warning=F,message=F}
 ds <- penguins
 
 head(ds)
@@ -67,7 +83,11 @@ dim(ds)
 glimpse(ds)
 
 visdat::vis_dat(ds)
+```
 
+Initial summary outputs show 344 instances of the 8 variables. The final graph indicates the missing values among the 8 variables. Variables with missing values include $sex$, $bill_length_mm$, $bill_depth_mm$, $flipper_length_mm$ and $body_mass_g$.
+
+```{r warning=F,message=F}
 # Penguins data has three factor variables
 ds %>%
   dplyr::select(where(is.factor)) %>%
@@ -84,7 +104,11 @@ ggplot(ds, aes(x = island, fill = species)) +
   theme_minimal() +
   facet_wrap(~species, ncol = 1) +
   coord_flip()
+```
 
+The above plot indicates the population of penguin species based on island. Interesting finding that Chinstrap are only observed on Dream island and Gentoo are only observed on Biscoe island, while the Adelie species are observed on all three islands in the study.
+
+```{r warning=F,message=F}
 # Count penguins for each species / sex
 ds %>%
   count(species, sex, .drop = F)
@@ -96,7 +120,11 @@ ggplot(ds, aes(x = sex, fill = species)) +
   theme_minimal() +
   facet_wrap(~species, ncol = 1) +
   coord_flip()
+```
 
+The above breakdown of penguin species by sex shows an expected ratio of near 50-50 for each species.
+
+```{r warning=F,message=F}
 # Penguins data also has four continuous variables, making six unique scatterplots
 ds %>%
   dplyr::select(body_mass_g, ends_with("_mm")) %>%
@@ -110,6 +138,8 @@ ggplot(data = penguins, aes(x = flipper_length_mm, y = body_mass_g)) +
   scale_color_manual(values = c("darkorange", "darkorchid", "cyan4"))
 ```
 
+The above scatterplot of body mass shows a strong similarity between the species Adelie and Chinstrap with a clear difference from Gentoo. A valuable observation in regards to the binary logistic regression model.
+
 ```{r warning=F, message=F}
 ds %>%
   dplyr::select(species, body_mass_g, ends_with("_mm")) %>%
@@ -117,6 +147,12 @@ ds %>%
   scale_color_manual(values = c("darkorange","purple","cyan4")) +
   scale_fill_manual(values = c("darkorange","purple","cyan4"))
 ```
+
+The above plot shows the additional strong similarities between the Adelie and Chinstrap species as compared to the Gentoo species.
+
+## Model Definitions
+
+Prep dataset for logistic regression. First step is to remove rows containing an NA.
 
 ```{r}
 # Create dataset for binary logistic regression: species Gentoo or Not
@@ -178,7 +214,7 @@ Resulting AIC: `r model1$aic`.
 
 ### Stepwise Model
 
-Next, the $stepAIC$ function is applied to the full model to determine the most ??meaningful?? variables for the model.
+Next, the $stepAIC$ function is applied to the full model to determine the most predictive variables for the model.
 
 ```{r warning=F}
 # All variables then applied with stepAIC
@@ -191,7 +227,7 @@ Resulting AIC: `r model2$aic`.
 
 ### Hand Selected Model
 
-Finally, a hand-selected list of independent variables are selected based on the evaluation of the exploratory data analysis.
+Finally, a hand-selected list of independent variables are chosen based on the evaluation of the exploratory data analysis.
 
 ```{r warning=F}
 # Hand selected variables
@@ -201,6 +237,10 @@ summary(model3)
 ```
 
 Resulting AIC: `r model3$aic`.
+
+### Make predictions
+
+Predictions are performed on the test dataset based on the three above binary logistic regression models.
 
 ```{r warning=F, message=F}
 ## use the test data set to make predictions for the 3 models
@@ -217,7 +257,13 @@ mod3.predict.manual <- ifelse(mod3.predict.probs > 0.5, '1','0')
 attach(test)
 ```
 
-```{r warning=F}
+### Model Visualizations
+
+Plots of the data to visualize the independent variable's value compared to the logit function of the dependent variable.
+
+First, plot the variable $flipper_length_mm$ against the logit value of the $Gentoo$ result.
+
+```{r warning=F,message=F}
 # Plot the dependent variable interpretation
 # https://sites.google.com/site/daishizuka/toolkits/plotting-logistic-regression-in-r
 
@@ -225,7 +271,11 @@ attach(test)
 plot(flipper_length_mm,gentoo,xlab="flipper_length_mm",ylab="Probability of Gentoo")
 g=glm(gentoo ~ flipper_length_mm, data = train, family = "binomial"(link="logit"))
 curve(predict(g,data.frame(flipper_length_mm=x),type="resp"),add=TRUE)
+```
 
+Second, plot the variable $bill_depth_mm$ against the logit value of the $Gentoo$ result.
+
+```{r warning=F,message=F}
 # plot with bill_depth_mm on x-axis and Gentoo species (0 or 1) on y-axis
 plot(bill_depth_mm,gentoo,xlab="bill_depth_mm",ylab="Probability of Gentoo")
 g=glm(gentoo ~ bill_depth_mm, data = train, family = "binomial"(link="logit"))
@@ -235,9 +285,25 @@ curve(predict(g,data.frame(bill_depth_mm=x),type="resp"),add=TRUE)
 logi.hist.plot(flipper_length_mm,gentoo,boxp=FALSE,type="hist",col="gray")
 ```
 
+Third plot above was just an attempt to use another library function for plotting the data against the logit function.
+
 ### Model 1 Results
 
-```{r warning=F}
+The baseline model shows: 
+
+- Accuracy: 1 or 100%
+
+- Area Under the Curve: 1.0
+
+- True Positive Rate (Sensitivity): 1.0
+
+- True Negative Rate (Specificity: 1.0
+
+- False Negative Rate (Miss Rate: 1-TPR): 0
+
+- False Positive Rate (Fall-out: 1-TNR): 0
+
+```{r warning=F,message=F}
 # Model1
 # now can use the caret function
 cm.var <- caret::confusionMatrix(factor(mod1.predict.manual), factor(test$gentoo), positive='1')
@@ -250,17 +316,25 @@ mod1.CMmetrics
 # ROC and AUC 
 par(pty="s")
 roc.stepwise <- roc(train$gentoo, model1$fitted.values, plot=TRUE, print.auc=TRUE)
-
-# Dispersion Statistic
-E2 <- resid(model1, type = "pearson")
-N  <- nrow(train)
-p  <- length(coef(model1)) + 1 # '+1' is due to theta
-mod1.dispersion <- dispesion <-sum(E2^2) / (N - p)
 ```
 
 ### Model 2 Results
 
-```{r warning=F}
+The $stepAIC$ model shows:
+
+- Accuracy: 1 or 100%
+
+- Area Under the Curve: 1.0
+
+- True Positive Rate (Sensitivity): 1.0
+
+- True Negative Rate (Specificity: 1.0
+
+- False Negative Rate (Miss Rate: 1-TPR): 0
+
+- False Positive Rate (Fall-out: 1-TNR): 0
+
+```{r warning=F,message=F}
 # Model2
 # now can use the caret function
 cm.var <- caret::confusionMatrix(factor(mod2.predict.manual), factor(test$gentoo), positive='1')
@@ -273,17 +347,25 @@ mod2.CMmetrics
 # ROC and AUC 
 par(pty="s")
 roc.stepwise <- roc(train$gentoo, model2$fitted.values, plot=TRUE, print.auc=TRUE)
-
-# Dispersion Statistic
-E2 <- resid(model2, type = "pearson")
-N  <- nrow(train)
-p  <- length(coef(model2)) + 1 # '+1' is due to theta
-mod2.dispersion <- dispesion <-sum(E2^2) / (N - p)
 ```
 
 ### Model 3 Results
 
-```{r warning=F}
+The hand-selected model shows:
+
+- Accuracy: 1 or 100%
+
+- Area Under the Curve: 1.0
+
+- True Positive Rate (Sensitivity): 1.0
+
+- True Negative Rate (Specificity: 1.0
+
+- False Negative Rate (Miss Rate: 1-TPR): 0
+
+- False Positive Rate (Fall-out: 1-TNR): 0
+
+```{r warning=F,message=F}
 # Model3
 # now can use the caret function
 cm.var <- caret::confusionMatrix(factor(mod3.predict.manual), factor(test$gentoo), positive='1')
@@ -296,15 +378,11 @@ mod3.CMmetrics
 # ROC and AUC 
 par(pty="s")
 roc.stepwise <- roc(train$gentoo, model3$fitted.values, plot=TRUE, print.auc=TRUE)
-
-# Dispersion Statistic
-E2 <- resid(model3, type = "pearson")
-N  <- nrow(train)
-p  <- length(coef(model3)) + 1 # '+1' is due to theta
-mod3.dispersion <- dispesion <-sum(E2^2) / (N - p)
 ```
 
 Looking at the summary results for the three models attempting to identify Gentoo species or not, I decided to make the goal a bit more difficult as Adelie species appears on all three islands, and statistically, the Adelie species does overlap with Chinstrap, I decided to create logistic regression models to identify Adelie instead of Gentoo.
+
+The first model uses the same baseline model approach as above including all independent variables. The second model re-uses the $stepAIC$ approach to algorithmically select the best independent variables.
 
 ```{r warning=F,message=F}
 # Create dataset for binary logistic regression: species Adelie or Not
@@ -354,7 +432,24 @@ mod1_ad.CMmetrics
 # ROC and AUC 
 par(pty="s")
 roc.stepwise <- roc(train$adelie, model1_ad$fitted.values, plot=TRUE, print.auc=TRUE)
+```
 
+
+The baseline model shows:
+
+- Accuracy: 0.9797980 or ~98%
+
+- Area Under the Curve: 1.0
+
+- True Positive Rate (Sensitivity): 0.9534884
+
+- True Negative Rate (Specificity: 1.0
+
+- False Negative Rate (Miss Rate: 1-TPR): 0.0465116
+
+- False Positive Rate (Fall-out: 1-TNR): 0
+
+```{r warning=F,message=F}
 # Model2
 # now can use the caret function
 cm.var <- caret::confusionMatrix(factor(mod2_ad.predict.manual), factor(test$adelie), positive='1')
@@ -369,9 +464,27 @@ par(pty="s")
 roc.stepwise <- roc(train$adelie, model2_ad$fitted.values, plot=TRUE, print.auc=TRUE)
 ```
 
+The $stepAIC$ model shows:
+
+- Accuracy: 0.9797980 or ~98%
+
+- Area Under the Curve: 1.0
+
+- True Positive Rate (Sensitivity): 0.9534884
+
+- True Negative Rate (Specificity: 1.0
+
+- False Negative Rate (Miss Rate: 1-TPR): 0.0465116
+
+- False Positive Rate (Fall-out: 1-TNR): 0
+
+Interestingly, the $stepAIC$ did not perform at 100% accuracy. The $stepAIC$ model indicates $bill_length_mm$, $bill_depth_mm$, and $body_mass_g$ are the three most predictive independent variables.
+
 # Multinomial Logistic Regression
 
-```{r warning=F}
+The following approach attempts to construct a multinomial logistic regression model based on a multivariate outcome. As the penguins dataset is based on a dependent variable (species) containing three values, these models attempt to predict the species of each penguin subject. 
+
+```{r warning=F, message=F}
 # Initial walk-through: https://stats.idre.ucla.edu/r/dae/multinomial-logistic-regression/
 
 # Start with initial dateset
@@ -462,7 +575,7 @@ After some Internet searching, it appears there isn't much direction in how to m
 Sex doesn't matter, 
 Considering that I'm grouping Orange and Purple, probably don't use bill_length_mm, as that one shows purple and green have similar distribution
 
-
+# Conclusion
 
 
 # Prompt
