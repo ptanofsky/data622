@@ -11,6 +11,12 @@ output: pdf_document
 ```{r warning=F, message=F}
 # Import required R libraries
 library(palmerpenguins)
+library(tidyverse)
+library(caret)
+library(MASS)
+library(ggplot2)
+library(mvtnorm)
+theme_set(theme_classic())
 ```
 
 
@@ -32,8 +38,97 @@ visdat::vis_dat(ds)
 
 http://www.sthda.com/english/articles/36-classification-methods-essentials/146-discriminant-analysis-essentials-in-r/
 
-https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
+```{r warning=F,message=F}
+# Load the data
+data("iris")
 
+#Split the data into training (80%) and test set (20%)
+set.seed(123)
+training.samples <- iris$Species %>%
+  createDataPartition(p = 0.8, list=FALSE)
+train.data <- iris[training.samples, ]
+test.data <- iris[-training.samples, ]
+
+#2. Normalize the data. Categorial variables are automatically ignored.
+# Estimate preprocessing parameters
+preproc.param <- train.data %>%
+  preProcess(method = c("center", "scale"))
+
+# Transform the data using the estimated parameters
+train.transformed <- preproc.param %>% predict(train.data)
+test.transformed <- preproc.param %>% predict(test.data)
+```
+
+```{r}
+# Fit the model
+model <- lda(Species~., data = train.transformed)
+# Make predictions
+predictions <- model %>% predict(test.transformed)
+# Model accuracy
+mean(predictions$class == test.transformed$Species)
+
+# Output Model
+model
+
+# Display model
+plot(model)
+
+names(predictions)
+
+# Predicted classes
+head(predictions$class, 6)
+# Predicted probabilities of class membership
+head(predictions$posterior, 6)
+# Linear discriminants
+head(predictions$x, 3)
+
+# Plot
+lda.data <- cbind(train.transformed, predict(model)$x)
+ggplot(lda.data, aes(LD1, LD2)) +
+  geom_point(aes(color = Species))
+
+# Model accuracy
+mean(predictions$class==test.transformed$Species)
+
+sum(predictions$posterior[ ,1] >= .5)
+```
+
+```{r}
+# QDA
+
+# Fit the model
+model <- qda(Species~., data = train.transformed)
+model
+# Make predictions
+predictions <- model %>% predict(test.transformed)
+# Model accuracy
+mean(predictions$class == test.transformed$Species)
+
+
+```
+
+https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
+```{r}
+# Variance Covariance matrix for random bivariate gaussian sample
+var_covar <- matrix(data = c(1.5, 0.4, 0.4, 1.5), nrow=2)
+
+# Random bivariate Gaussian samples for class +1
+Xplus1 <- rmvnorm(400, mean = c(5, 5), sigma = var_covar)
+
+# Random bivariate Gaussian samples for class -1
+Xminus1 <- rmvnorm(600, mean = c(3, 3), sigma = var_covar)
+
+# Samples for the dependent variable
+Y_samples <- c(rep(1, 400), rep(-1, 600))
+
+# Combining the independent and dependent variables into a dataframe
+dataset <- as.data.frame(cbind(rbind(Xplus1, Xminus1), Y_samples))
+colnames(dataset) <- c("X1", "X2", "Y")
+dataset$Y <- as.character(dataset$Y)
+
+# Plot the above samples and color by class labels
+ggplot(data = dataset) + geom_point(aes(X1, X2, color = Y))
+```
 
 # QDA: Quadratic Discrimant Analysis
 
@@ -42,19 +137,68 @@ Same link as above
 # NB: Naive Bayes
 
 https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
+```{r}
+library(e1071)
 
+# Next load the Titantic dataset
+data("Titanic")
+
+# Save into a data frame and view it
+t_df <- as.data.frame(Titanic)
+
+# Creating data from table
+repeating_sequence <- rep.int(seq_len(nrow(t_df)), t_df$Freq)
+
+# Create the dataset by row repetition created
+t_ds <- t_df[repeating_sequence, ]
+
+# We no longer need the frequency, drop the feature
+t_ds$Freq = NULL
+
+# Fitting the Naive Bayes model
+nbm <- naiveBayes(Survived~., data=t_ds)
+# Output the model
+nbm
+
+# Prediction on the dataset
+nb_predictions <- predict(nbm, t_ds)
+# Confusion matrix to check accuracy
+table(nb_predictions, t_ds$Survived)
+
+# Getting started with Naive Bayes in mlr
+library(mlr)
+
+# Create a classification task for learning on Titantic Dataset and specify the target feature
+task <- makeClassifTask(data = t_ds, target="Survived")
+
+# Initialize the Naive Bayes classifier
+selected_model <- makeLearner("classif.naiveBayes")
+
+# Train the model
+nb_mlr <- train(selected_model, task)
+
+# Read the model learned
+nb_mlr$learner.model
+
+# Predict on the dataset without passing the target feature
+predictions_mlr <- as.data.frame(predict(nb_mlr, newdata = t_ds[,1:3]))
+
+# Confusion matrix to check accuracy
+table(predictions_mlr[,1], t_ds$Survived)
+```
 
 https://www.geeksforgeeks.org/naive-bayes-classifier-in-r-programming/
 
 
 # ==== Prompt =====
 
+```{r eval=F}
 Homework # 2 (Generative Models) (100 points) Due on March 12, 11:59pm EST
-We will be working with the Penguin dataset again as we did for Homework #1. Please use “Species” as your target variable. For this assignment, you may want to drop/ignore the variable “year”.
+We will be working with the Penguin dataset again as we did for Homework #1. Please use "Species" as your target variable. For this assignment, you may want to drop/ignore the variable "year".
 Using the target variable, Species, please conduct:
 a. LinearDiscriminantAnalysis(30points):
-a. Youwanttoevaluateallthe‘features’ordependentvariablesandsee what should be in your model. Please comment on your choices.
-b. Justasuggestion:YoumightwanttoconsiderexploringfeaturePlot on the caret package. Basically, you look at each of the features/dependent variables and see how they are different based on species. Simply eye-balling this might give you an idea about which would be strong ‘classifiers’ (aka predictors).
+a. Youwanttoevaluateallthe'features'ordependentvariablesandsee what should be in your model. Please comment on your choices.
+b. Justasuggestion:YoumightwanttoconsiderexploringfeaturePlot on the caret package. Basically, you look at each of the features/dependent variables and see how they are different based on species. Simply eye-balling this might give you an idea about which would be strong 'classifiers' (aka predictors).
 c. Fit your LDA model using whatever predictor variables you deem appropriate. Feel free to split the data into training and test sets before fitting the model.
 d. Lookatthefitstatistics/accuracyrates.
 b. QuadraticDiscriminantAnalysis(30points)
@@ -62,3 +206,4 @@ a. Samestepsasabovetoconsider
 c. Naïve Bayes (30 points)
 a. Samestepsasabovetoconsider
 d. Commentonthemodelsfits/strength/weakness/accuracyforallthesethree models that you worked with. (10 points)
+```
