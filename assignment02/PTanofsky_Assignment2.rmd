@@ -34,20 +34,112 @@ glimpse(ds)
 visdat::vis_dat(ds)
 ```
 
+
+```{r warning=F,message=F}
+# Use featurePlot
+# https://topepo.github.io/caret/visualizations.html
+
+# Scatterplot
+featurePlot(x = penguins[, 3:6],
+            y = penguins$species,
+            plot = "pairs",
+            # Add a key at the top
+            auto.key = list(columns = 3))
+
+# Overlayed density plots
+featurePlot(x = penguins[, 6:6],
+            y = penguins$species,
+            plot = "density",
+            # Pass in options to xyplot() to
+            # make it prettier
+            scales = list(x = list(relation="free"),
+                          x = list(relation="free")),
+            adjust = 1.5,
+            pch = "|",
+            layout = c(1, 1),
+            auto.key = list(columns = 3))
+
+```
+
+From scatterplot above featurePlot function, bill_length_mm appears to differentiate
+bill_depth_mm doesn't differentiate well, 
+
+```{r warning=F,message=F}
+# Plots of individual variables
+#http://www.sthda.com/english/articles/32-r-graphics-essentials/133-plot-one-variable-frequency-graph-density-distribution-and-more/
+
+a <- ggplot(penguins, aes(x = bill_length_mm))
+
+a + geom_histogram(bins = 30, color = "black", fill = "gray") +
+  geom_vline(aes(xintercept = mean(bill_length_mm)), 
+             linetype = "dashed", size = 0.6)
+
+b <- ggplot(penguins, aes(x = bill_depth_mm))
+
+b + geom_histogram(bins = 30, color = "black", fill = "gray") +
+  geom_vline(aes(xintercept = mean(bill_depth_mm)), 
+             linetype = "dashed", size = 0.6)
+
+c <- ggplot(penguins, aes(x = flipper_length_mm))
+
+c + geom_histogram(bins = 30, color = "black", fill = "gray") +
+  geom_vline(aes(xintercept = mean(flipper_length_mm)), 
+             linetype = "dashed", size = 0.6)
+
+d <- ggplot(penguins, aes(x = body_mass_g))
+
+d + geom_histogram(bins = 30, color = "black", fill = "gray") +
+  geom_vline(aes(xintercept = mean(body_mass_g)), 
+             linetype = "dashed", size = 0.6)
+```
+
+Covariance checks
+```{r warning=F,message=F}
+# Compute correlation matrix
+cor_mat <- cor(penguins[,3:6],  use = "complete.obs")
+round(cor_mat, 2)
+
+library(corrplot)
+corrplot(cor_mat, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+# Compute covariance matrix
+cov_mat <- cov(penguins[,3:6],  use = "complete.obs")
+round(cov_mat, 2)
+```
+
 # LDA: Linear Discrimant Analysis
+
+LDA does not handle categorial data well.
+
+LDA assumes the feature variables come from multivariate normal distribution, all of them continuous
 
 http://www.sthda.com/english/articles/36-classification-methods-essentials/146-discriminant-analysis-essentials-in-r/
 
+LDA assumes the predictors are normally distributed (Gaussian distribution) and that the different classes have class-specific means and equal variance/covariance
+
+Make sure each variable is normally distributed
+
+https://web.stanford.edu/class/stats202/notes/Classification/LDA.html
+That is, within each class the features have multivariate normal distribution with center depending on the class and common covariance
 ```{r warning=F,message=F}
 # Load the data
-data("iris")
+data("penguins")
+
+# Only complete entries
+penguins <- na.omit(penguins)
+
+# Remove 'year' and 'sex feature
+# Apparently leaving 'island' in for LDA improves the model
+drops <- c("year", "sex")
+penguins <- penguins[ , !(names(penguins) %in% drops)]
 
 #Split the data into training (80%) and test set (20%)
 set.seed(123)
-training.samples <- iris$Species %>%
+training.samples <- penguins$species %>%
   createDataPartition(p = 0.8, list=FALSE)
-train.data <- iris[training.samples, ]
-test.data <- iris[-training.samples, ]
+train.data <- penguins[training.samples, ]
+test.data <- penguins[-training.samples, ]
 
 #2. Normalize the data. Categorial variables are automatically ignored.
 # Estimate preprocessing parameters
@@ -57,15 +149,32 @@ preproc.param <- train.data %>%
 # Transform the data using the estimated parameters
 train.transformed <- preproc.param %>% predict(train.data)
 test.transformed <- preproc.param %>% predict(test.data)
+
 ```
+
+Focus on normal distributions
+
+If n is small and the distribution of the predictors X is approximately normal in each of the classes, the LD model is more stable than logistic regression
+
+Correlation will cause a line in the gaussian density plot
+
+When there are K classes, linear discriminant analysis can be viewed exactly in a K-1 dimensional plot.
+Measuring which centroid is the closest. Distance in the subspace
+
+Co-variance matrix wold be 4 x 4 for 4 features
+
 
 ```{r}
 # Fit the model
-model <- lda(Species~., data = train.transformed)
+model <- lda(species~., data = train.transformed)
 # Make predictions
 predictions <- model %>% predict(test.transformed)
+
+# Confusion matrix
+table(predictions$class, test.transformed$species)
+
 # Model accuracy
-mean(predictions$class == test.transformed$Species)
+mean(predictions$class == test.transformed$species)
 
 # Output Model
 model
@@ -85,30 +194,41 @@ head(predictions$x, 3)
 # Plot
 lda.data <- cbind(train.transformed, predict(model)$x)
 ggplot(lda.data, aes(LD1, LD2)) +
-  geom_point(aes(color = Species))
+  geom_point(aes(color = species))
 
 # Model accuracy
-mean(predictions$class==test.transformed$Species)
+mean(predictions$class==test.transformed$species)
 
 sum(predictions$posterior[ ,1] >= .5)
 ```
 
-```{r}
+```{r eval=T}
 # QDA
 
+# Remove 'island' feature as it was causing rank deficiency in group Chinstrap
+#drops <- c("flipper_length_mm", "body_mass_g", "island")
+drops <- c("island")
+train.transformed <- train.transformed[ , !(names(train.transformed) %in% drops)]
+
 # Fit the model
-model <- qda(Species~., data = train.transformed)
+model <- qda(species~., data = train.transformed)
+
+# Output model results
 model
+
 # Make predictions
 predictions <- model %>% predict(test.transformed)
-# Model accuracy
-mean(predictions$class == test.transformed$Species)
 
+# Model accuracy
+mean(predictions$class == test.transformed$species)
 
 ```
 
 https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
-```{r}
+```{r eval=T}
+
+# this isn't being applied to the real data
+
 # Variance Covariance matrix for random bivariate gaussian sample
 var_covar <- matrix(data = c(1.5, 0.4, 0.4, 1.5), nrow=2)
 
@@ -134,10 +254,14 @@ ggplot(data = dataset) + geom_point(aes(X1, X2, color = Y))
 
 Same link as above
 
+QDA: works well with fewer features, that's when NB works well, works with higher number of features
+
+mixed features can be used for NB
+
 # NB: Naive Bayes
 
 https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
-```{r}
+```{r eval=F}
 library(e1071)
 
 # Next load the Titantic dataset
@@ -203,7 +327,7 @@ c. Fit your LDA model using whatever predictor variables you deem appropriate. F
 d. Lookatthefitstatistics/accuracyrates.
 b. QuadraticDiscriminantAnalysis(30points)
 a. Samestepsasabovetoconsider
-c. Naïve Bayes (30 points)
+c. Naive Bayes (30 points)
 a. Samestepsasabovetoconsider
 d. Commentonthemodelsfits/strength/weakness/accuracyforallthesethree models that you worked with. (10 points)
 ```
