@@ -8,6 +8,8 @@ output: pdf_document
 
 # Introduction
 
+Purpose, prompt of the exercise
+
 ```{r warning=F, message=F}
 # Import required R libraries
 library(palmerpenguins)
@@ -19,6 +21,7 @@ library(mvtnorm)
 theme_set(theme_classic())
 ```
 
+Initial Data Inspection
 
 ```{r warning=F,message=F}
 ds <- penguins
@@ -34,6 +37,7 @@ glimpse(ds)
 visdat::vis_dat(ds)
 ```
 
+Exploratory Data Analysis
 
 ```{r warning=F,message=F}
 # Use featurePlot
@@ -47,7 +51,7 @@ featurePlot(x = penguins[, 3:6],
             auto.key = list(columns = 3))
 
 # Overlayed density plots
-featurePlot(x = penguins[, 6:6],
+featurePlot(x = penguins[, 3:6],
             y = penguins$species,
             plot = "density",
             # Pass in options to xyplot() to
@@ -64,11 +68,24 @@ featurePlot(x = penguins[, 6:6],
 From scatterplot above featurePlot function, bill_length_mm appears to differentiate
 bill_depth_mm doesn't differentiate well, 
 
+but bill_length_mm and flipper_length_mm appear highly correlated
+
 ```{r warning=F,message=F}
 # Plots of individual variables
 #http://www.sthda.com/english/articles/32-r-graphics-essentials/133-plot-one-variable-frequency-graph-density-distribution-and-more/
 
-a <- ggplot(penguins, aes(x = bill_length_mm))
+
+# Change density plot fill colors by groups
+p <- ggplot(penguins, aes(x=bill_length_mm, fill=species)) +
+  geom_density(alpha=0.4)
+
+p
+
+a <- penguins %>% 
+      filter(species == 'Gentoo') %>%
+      ggplot(aes(x = bill_length_mm))
+
+#a <- ggplot(penguins, aes(x = bill_length_mm))
 
 a + geom_histogram(bins = 30, color = "black", fill = "gray") +
   geom_vline(aes(xintercept = mean(bill_length_mm)), 
@@ -106,6 +123,19 @@ corrplot(cor_mat, type = "upper", order = "hclust",
 # Compute covariance matrix
 cov_mat <- cov(penguins[,3:6],  use = "complete.obs")
 round(cov_mat, 2)
+
+p_g <- penguins %>% filter(species == 'Gentoo')
+cov_mat <- cov(p_g[,3:6],  use = "complete.obs")
+round(cov_mat, 2)
+
+p_a <- penguins %>% filter(species == 'Adelie')
+cov_mat <- cov(p_a[,3:6],  use = "complete.obs")
+round(cov_mat, 2)
+
+p_c <- penguins %>% filter(species == 'Chinstrap')
+
+cov_mat <- cov(p_c[,3:6],  use = "complete.obs")
+round(cov_mat, 2)
 ```
 
 # LDA: Linear Discrimant Analysis
@@ -122,6 +152,9 @@ Make sure each variable is normally distributed
 
 https://web.stanford.edu/class/stats202/notes/Classification/LDA.html
 That is, within each class the features have multivariate normal distribution with center depending on the class and common covariance
+
+bill_depth, bill_length, body_mass
+
 ```{r warning=F,message=F}
 # Load the data
 data("penguins")
@@ -141,7 +174,7 @@ training.samples <- penguins$species %>%
 train.data <- penguins[training.samples, ]
 test.data <- penguins[-training.samples, ]
 
-#2. Normalize the data. Categorial variables are automatically ignored.
+#2. Normalize the data. Categorial variables are automatically ignored from normalizing
 # Estimate preprocessing parameters
 preproc.param <- train.data %>%
   preProcess(method = c("center", "scale"))
@@ -163,6 +196,7 @@ Measuring which centroid is the closest. Distance in the subspace
 
 Co-variance matrix wold be 4 x 4 for 4 features
 
+Distribution and common covariance for each class
 
 ```{r}
 # Fit the model
@@ -225,30 +259,7 @@ mean(predictions$class == test.transformed$species)
 ```
 
 https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
-```{r eval=T}
 
-# this isn't being applied to the real data
-
-# Variance Covariance matrix for random bivariate gaussian sample
-var_covar <- matrix(data = c(1.5, 0.4, 0.4, 1.5), nrow=2)
-
-# Random bivariate Gaussian samples for class +1
-Xplus1 <- rmvnorm(400, mean = c(5, 5), sigma = var_covar)
-
-# Random bivariate Gaussian samples for class -1
-Xminus1 <- rmvnorm(600, mean = c(3, 3), sigma = var_covar)
-
-# Samples for the dependent variable
-Y_samples <- c(rep(1, 400), rep(-1, 600))
-
-# Combining the independent and dependent variables into a dataframe
-dataset <- as.data.frame(cbind(rbind(Xplus1, Xminus1), Y_samples))
-colnames(dataset) <- c("X1", "X2", "Y")
-dataset$Y <- as.character(dataset$Y)
-
-# Plot the above samples and color by class labels
-ggplot(data = dataset) + geom_point(aes(X1, X2, color = Y))
-```
 
 # QDA: Quadratic Discrimant Analysis
 
