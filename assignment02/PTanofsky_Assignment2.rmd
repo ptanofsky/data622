@@ -18,6 +18,8 @@ library(caret)
 library(MASS)
 library(ggplot2)
 library(mvtnorm)
+library(e1071)
+library(klaR)
 theme_set(theme_classic())
 ```
 
@@ -235,7 +237,7 @@ When there are K classes, linear discriminant analysis can be viewed exactly in 
 Measuring which centroid is the closest. Distance in the subspace
 
 
-```{r eval=T}
+```{r warning=F,message=F,eval=T}
 # Fit the model
 model <- lda(species~bill_length_mm + flipper_length_mm, data = train.transformed)
 # Make predictions
@@ -267,13 +269,19 @@ lda.data <- cbind(train.transformed, predict(model)$x)
 ggplot(lda.data, aes(LD1, LD2)) +
   geom_point(aes(color = species))
 
+# From: https://rpubs.com/Nolan/298913
+plot(model, dimen = 1, type = "b")
+
+
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="lda")
+
 # Model accuracy
 mean(predictions$class==test.transformed$species)
 
 sum(predictions$posterior[ ,1] >= .5)
 ```
 
-```{r eval=F}
+```{r warning=F,message=F,eval=T}
 # QDA
 
 # Remove 'island' feature as it was causing rank deficiency in group Chinstrap
@@ -287,11 +295,19 @@ model <- qda(species~., data = train.transformed)
 # Output model results
 model
 
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="qda")
+
 # Make predictions
 predictions <- model %>% predict(test.transformed)
 
+# Confusion matrix
+table(predictions$class, test.transformed$species)
+
 # Model accuracy
 mean(predictions$class == test.transformed$species)
+
+# Plot
+
 
 ```
 
@@ -309,39 +325,29 @@ mixed features can be used for NB
 # NB: Naive Bayes
 
 https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
-```{r eval=F}
-library(e1071)
-
-# Next load the Titantic dataset
-data("Titanic")
-
-# Save into a data frame and view it
-t_df <- as.data.frame(Titanic)
-
-# Creating data from table
-repeating_sequence <- rep.int(seq_len(nrow(t_df)), t_df$Freq)
-
-# Create the dataset by row repetition created
-t_ds <- t_df[repeating_sequence, ]
-
-# We no longer need the frequency, drop the feature
-t_ds$Freq = NULL
+```{r warning=F,message=F,eval=T}
+# Modified for the penguin data
 
 # Fitting the Naive Bayes model
-nbm <- naiveBayes(Survived~., data=t_ds)
+nbm <- naiveBayes(species~., data=train.transformed)
+
 # Output the model
 nbm
 
+plot.NaiveBayes(nbm)
+
 # Prediction on the dataset
-nb_predictions <- predict(nbm, t_ds)
+nb_predictions <- predict(nbm, test.transformed)
 # Confusion matrix to check accuracy
-table(nb_predictions, t_ds$Survived)
+table(nb_predictions, test.transformed$species)
+
+mean(nb_predictions == test.transformed$species)
 
 # Getting started with Naive Bayes in mlr
 library(mlr)
 
 # Create a classification task for learning on Titantic Dataset and specify the target feature
-task <- makeClassifTask(data = t_ds, target="Survived")
+task <- makeClassifTask(data = train.transformed, target="species")
 
 # Initialize the Naive Bayes classifier
 selected_model <- makeLearner("classif.naiveBayes")
@@ -353,11 +359,15 @@ nb_mlr <- train(selected_model, task)
 nb_mlr$learner.model
 
 # Predict on the dataset without passing the target feature
-predictions_mlr <- as.data.frame(predict(nb_mlr, newdata = t_ds[,1:3]))
+predictions_mlr <- as.data.frame(predict(nb_mlr, newdata = test.transformed))
 
 # Confusion matrix to check accuracy
-table(predictions_mlr[,1], t_ds$Survived)
+table(predictions_mlr[,1], test.transformed$species)
+
+mean(predictions_mlr[,1] == test.transformed$species)
 ```
+
+
 
 https://www.geeksforgeeks.org/naive-bayes-classifier-in-r-programming/
 
