@@ -4,11 +4,12 @@ subtitle: "CUNY: Spring 2021"
 author: "Philip Tanofsky"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output: pdf_document
+bibliography: bibliography.bib
 ---
 
 # Introduction
 
-The purpose of this project is to apply generative model approaches to the Palmer Penguin data set available at https://allisonhorst.github.io/palmerpenguins/articles/intro.html. The first approach performs linear discriminant analysis (LDA) on the dataset in order to predict the species of the penguin subjects. The second approach performs a quadratic discriminant analysis in order to predict the species of penguin subjects. The final approach uses the Naive Bayes modeling approach to also predict the species of the penguin subjects. The exploratory data analysis informs the decisions of the predictor variables included for each generative model. A final comparison of the models are presented in order to compare the accuracy of each.
+The purpose of this project is to apply generative model approaches to the Palmer Penguin data set available at https://allisonhorst.github.io/palmerpenguins/articles/intro.html [@ppens]. The first approach performs linear discriminant analysis (LDA) on the dataset in order to predict the species of the penguin subjects. The second approach performs a quadratic discriminant analysis in order to predict the species of penguin subjects. The final approach uses the Naive Bayes modeling approach to also predict the species of the penguin subjects. The exploratory data analysis informs the decisions of the predictor variables included for each generative model. A final comparison of the models are presented in order to compare the accuracy of each.
 
 ```{r warning=F, message=F}
 # Import required R libraries
@@ -20,6 +21,8 @@ library(ggplot2)
 library(mvtnorm)
 library(e1071)
 library(klaR)
+library(pROC)
+library(corrplot)
 theme_set(theme_classic())
 ```
 
@@ -148,7 +151,6 @@ Based on the covariance matrix, the correlation matrix should confirm the variab
 cor_mat <- cor(penguins[,3:6],  use = "complete.obs")
 round(cor_mat, 2)
 
-library(corrplot)
 corrplot(cor_mat, type = "upper", order = "hclust", 
          tl.col = "black", tl.srt = 45)
 
@@ -249,10 +251,10 @@ Based on the exploratory data analysis, the three variables selected for the LDA
 
 ```{r warning=F,message=F,eval=T}
 # Fit the model
-model <- lda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
+model.lda <- lda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
 
 # Output Model
-model
+model.lda
 ```
 
 When there are K classes, linear discriminant analysis can be viewed exactly in a K-1 dimensional plot.
@@ -262,7 +264,7 @@ The plot of the LD1 and LD2 values on the two-dimensional plot shows the classif
 
 ```{r warning=F,message=F,eval=T}
 # Plot
-lda.data <- cbind(train.transformed, predict(model)$x)
+lda.data <- cbind(train.transformed, predict(model.lda)$x)
 ggplot(lda.data, aes(LD1, LD2)) +
   geom_point(aes(color = species))
 ```
@@ -271,15 +273,15 @@ Now predict the species on the transformed test dataset.
 
 ```{r warning=F,message=F,eval=T}
 # Make predictions
-predictions <- model %>% predict(test.transformed)
+preds.lda <- model.lda %>% predict(test.transformed)
 
-head(predictions$x, 3)
+head(preds.lda$x, 3)
 
 # Confusion matrix
-table(predictions$class, test.transformed$species)
+table(preds.lda$class, test.transformed$species)
 
 # Model accuracy
-mean(predictions$class == test.transformed$species)
+mean(preds.lda$class == test.transformed$species)
 ```
 
 The confusion matrix indicates one incorrect prediction with an overall model accuracy of 98.78%.
@@ -289,13 +291,13 @@ The 2D subspace plot of LD1 and LD2 on the test dataset show a similar pattern t
 ```{r warning=F,message=F,eval=T}
 
 # Plot
-lda.data <- cbind(test.transformed, predictions$x)
+lda.data <- cbind(test.transformed, preds.lda$x)
 ggplot(lda.data, aes(LD1, LD2)) +
   geom_point(aes(color = species))
 
-ldahist(data=predictions$x[,1], g=test.transformed$species)
+ldahist(data=preds.lda$x[,1], g=test.transformed$species)
 
-ldahist(data=predictions$x[,2], g=test.transformed$species)
+ldahist(data=preds.lda$x[,2], g=test.transformed$species)
 ```
 
 The bar plot for LD1 shows a better performance in classifying among the three species, while the LD2 bar plot shows more overlap among the three species. These plots align with the proportion of trace from the initial model output. LD1 accounts for over 88% of the trace, while LD2 accounts for less than 12%.
@@ -315,26 +317,34 @@ Quadratic discriminant analysis, similar to linear discriminant analysis, also a
 ```{r warning=F,message=F,eval=T}
 # QDA
 # Fit the model
-model <- qda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
+model.qda <- qda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
 
 # Output model results
-model
+model.qda
 ```
 
-WORDS_HERE
+The model output for the QDA provides group means equal to the group means provided from the LDA model output. Thus, showing the similarity in behavior between the two model approaches. As the QDA model is quadratic, the model output does not contain coefficients for each independent variable as the LDA model does.
 
 ```{r warning=F,message=F,eval=T}
 # Make predictions
-predictions <- model %>% predict(test.transformed)
+preds.qda <- model.qda %>% predict(test.transformed)
 
 # Confusion matrix
-table(predictions$class, test.transformed$species)
+table(preds.qda$class, test.transformed$species)
 
 # Model accuracy
-mean(predictions$class == test.transformed$species)
+mean(preds.qda$class == test.transformed$species)
 ```
 
 The confusion matrix indicates two incorrect predictions with an overall model accuracy of 97.56%. Based on the textbook description of QDA, LDA typically outperforms QDA when relatively fewer training observations are used. Also, as the covariance matrix outlined in the exploratory data analysis, the assumptions are met for the LDA model approach. That being said, the difference in accuracy is based on a single additional incorrect prediction.
+
+The below table indicates an error rate of 1.22% for LDA and an error rate of 2.44% for QDA.
+
+```{r warning=F,message=F,eval=T}
+test.transformed %>%
+  summarise(lda.error = mean(preds.lda$class != test.transformed$species),
+            qda.error = mean(preds.qda$class != test.transformed$species))
+```
 
 The partition plots below capture the quadratic nature of the decision boundaries.
 
@@ -346,42 +356,86 @@ partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mas
 
 # Naive Bayes
 
-Assumes all predictor variables are independent. in the case of numeric features, NB makes a strong assumption that the numerical variable is normally distributed.
-
-WORDS_HERE
+The Naive Bayes classifier relies on Bayes theorem of probability. The naive Bayes classifer makes a simplifying assumpiotin which is all predictor variables are conditionally independent of each other in regards to the dependent variable. For numeric features, the Naive Bayes approach makes an assumption that the numerical variables are normally distributed. Due to the assumption of conditional independence, the NB classifier can lead to biased posterior probabilities.
 
 ```{r warning=F,message=F,eval=T}
 # Modified for the penguin data
 
 # Fitting the Naive Bayes model
-nbm <- naiveBayes(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data=train.transformed)
+model.nb <- naiveBayes(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data=train.transformed)
 
 # Output the model
-nbm
+model.nb
 ```
 
-WORDS_HERE
+Interestlingly enough, the conditional probabilities of the NB model match the group means for the LDA and QDA models, a good sign for the upcoming predictions.
 
 ```{r warning=F,message=F,eval=T}
 # Prediction on the dataset
-nb_predictions <- predict(nbm, test.transformed)
+preds.nb <- predict(model.nb, test.transformed)
 # Confusion matrix to check accuracy
-table(nb_predictions, test.transformed$species)
+table(preds.nb, test.transformed$species)
 
-mean(nb_predictions == test.transformed$species)
+mean(preds.nb == test.transformed$species)
 ```
 
 The confusion matrix indicates one incorrect prediction with an overall model accuracy of 98.78%. 
 
-WORDS_HERE
+With the same conditional probabilities of the NB model as the group means of the LDA model, the predictions are the exact same. Each model contains one incorrect prediction of an Adelie penguin predicted as a Chinstrap.
+
+
+### AUC Comparison
+
+Give the three classifier models resulting near identicial group means and conditional probabilities, along with the near identical accuracy, the following area under the curve plots show results just short of 1.0.
+
+```{r warning=F,message=F,eval=T}
+# ROC curves
+
+par(mfrow=c(2, 2))
+
+preds.lda.num <- as.numeric(preds.lda$class)
+roc.multi.lda <- multiclass.roc(test.transformed$species, preds.lda.num)
+lda.auc <- auc(roc.multi.lda)
+rs.lda <- roc.multi.lda[['rocs']]
+plot.roc(rs.lda[[1]], main="LDA",
+         xlim=c(1, 0), ylim=c(0, 1), add=FALSE, asp=NA)
+
+preds.qda.num <- as.numeric(preds.qda$class)
+roc.multi.qda <- multiclass.roc(test.transformed$species, preds.qda.num)
+qda.auc <- auc(roc.multi.qda)
+rs.qda <- roc.multi.qda[['rocs']]
+plot.roc(rs.qda[[1]], main="QDA",
+         xlim=c(1, 0), ylim=c(0, 1), add=FALSE, asp=NA)
+
+preds.nb.num <- as.numeric(preds.nb)
+roc.multi.nb <- multiclass.roc(test.transformed$species, preds.nb.num)
+nb.auc <- auc(roc.multi.nb)
+rs.nb <- roc.multi.nb[['rocs']]
+plot.roc(rs.nb[[1]], main="Naive Bayes",
+         xlim=c(1, 0), ylim=c(0, 1), add=FALSE, asp=NA)
+```
+
+Area under the curve results:
+
+- LDA: `r lda.auc`
+
+- QDA: `r qda.auc`
+
+- Naive Bayes: `r nb.auc`
 
 # Conclusion
 
-ROC curves
-
 WORDS_HERE
 
-Palmer Penguins citation
+$$
+  @Manual{,
+    title = {palmerpenguins: Palmer Archipelago (Antarctica) penguin data},
+    author = {Allison Marie Horst and Alison Presmanes Hill and Kristen B Gorman},
+    year = {2020},
+    note = {R package version 0.1.0},
+    url = {https://allisonhorst.github.io/palmerpenguins/},
+  }
+$$
 
 # ==== Prompt =====
 
@@ -428,3 +482,4 @@ If n is small and the distribution of the predictors X is approximately normal i
 
 Correlation will cause a line in the Gaussian density plot
 
+# References
