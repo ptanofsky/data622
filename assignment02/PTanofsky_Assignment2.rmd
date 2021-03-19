@@ -96,7 +96,7 @@ The independent variable $bill_length_mm$ stands out by providing a clear distin
 
 So far, the independent variable $bill_length_mm$ is a prime candidate to be included in the generative models. The key will be identifying which of the other variables will provide additional significance to the model.
 
-The following boxplots provide another perspective of the continuous variable relationships across the three species. As already noted, Adelie and Chinstratp show similar means and distributions for three of the four variables. The boxplot does indicate a few outlies across the variable values but nothing egregious.
+The following boxplots provide another perspective of the continuous variable relationships across the three species. As already noted, Adelie and Chinstrap show similar means and distributions for three of the four variables. The boxplot does indicate a few outliers across the variable values but nothing egregious.
 
 ```{r warning=F,message=F}
 featurePlot(x = penguins[, 3:6], 
@@ -158,7 +158,7 @@ corrplot(cor_mat, type = "upper", order = "hclust",
 
 For comprehensive exploratory data analysis, the categorical independent variables are plotted and assessed.
 
-The breakdown of penguin species by island indicates an uneven distribution by island. Gentoo only appear on Biscoe island, Chinstrap only appear on Dream, and Adelie appears on all three island under consideration, Torgensen, Dream and Bisco.
+The breakdown of penguin species by island indicates an uneven distribution by island. Gentoo only appear on Biscoe island, Chinstrap only appear on Dream, and Adelie appears on all three island under consideration, Torgensen, Dream and Biscoe.
 
 ```{r warning=F,message=F}
 # Count penguins for each species / island
@@ -197,7 +197,7 @@ ggplot(ds, aes(x = year, fill = species)) +
   coord_flip()
 ```
 
-As an additional evaluation of the independent variables, a MANOVA test is applies of the four continuous variables along with year, which is defined as numeric. The categorial variables are not applicable for the MANOVA test. The results show a high significance for the four continuous variables while also indicating the year variable is not significant. These results confirm previous understanding of the independent variables.
+As an additional evaluation of the independent variables, a MANOVA test is applies of the four continuous variables along with year, which is defined as numeric. The categorical variables are not applicable for the MANOVA test. The results show a high significance for the four continuous variables while also indicating the year variable is not significant. These results confirm previous understanding of the independent variables.
 
 ```{r warning=F,message=F}
 # MANOVA test
@@ -209,7 +209,7 @@ summary.aov(manova_res)
 
 # Linear Discriminant Analysis (LDA)
 
-Linear discriminant analysis is a classification method that separates classes through linear directions, or linear discrimants. The linear directions are derived as linear combinations of the predictor variables. As outlined above, LDA assumes the feature variables come from multivariate normal distributions and each one continuous. The different classes should also have class-specific means and equal variance/covariance. LDA does not handle categorical data well.
+Linear discriminant analysis is a classification method that separates classes through linear directions, or linear discriminants. The linear directions are derived as linear combinations of the predictor variables. As outlined above, LDA assumes the feature variables come from multivariate normal distributions and each one continuous. The different classes should also have class-specific means and equal variance/covariance. LDA does not handle categorical data well.
 
 To prepare the data for the LDA model, the observations with missing data are removed from the dataset. Next, the categorical variables sex and year are removed. Based on the exploratory data analysis, neither variable appears to distinguish one species from another. Despite LDA not handling categorical data well, I chose to leave the variable island in the dataset as a trial.
 
@@ -245,15 +245,7 @@ test.transformed <- preproc.param %>% predict(test.data)
 
 ```
 
-
-Focus on normal distributions
-
-If n is small and the distribution of the predictors X is approximately normal in each of the classes, the LD model is more stable than logistic regression
-
-Correlation will cause a line in the Gaussian density plot
-
-When there are K classes, linear discriminant analysis can be viewed exactly in a K-1 dimensional plot.
-Measuring which centroid is the closest. Distance in the subspace
+Based on the exploratory data analysis, the three variables selected for the LDA model (and the two subsequent models) are $bill\_length\_mm$, $flipper\_length\_mm$ and $bill\_depth\_mm$. As the $body\_mass\_g$ variable was highly correlated with $bill\_length\_mm$ and $flipper\_length\_mm$, the variable was omitted from the model. The categorical variables were also omitted, as LDA performs best on continuous variables.
 
 ```{r warning=F,message=F,eval=T}
 # Fit the model
@@ -262,6 +254,20 @@ model <- lda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = 
 # Output Model
 model
 ```
+
+When there are K classes, linear discriminant analysis can be viewed exactly in a K-1 dimensional plot.
+With three classes in the species dependent variables, two linear discriminants are generated.
+
+The plot of the LD1 and LD2 values on the two-dimensional plot shows the classification of the species in the 2D subspace.
+
+```{r warning=F,message=F,eval=T}
+# Plot
+lda.data <- cbind(train.transformed, predict(model)$x)
+ggplot(lda.data, aes(LD1, LD2)) +
+  geom_point(aes(color = species))
+```
+
+Now predict the species on the transformed test dataset.
 
 ```{r warning=F,message=F,eval=T}
 # Make predictions
@@ -276,45 +282,46 @@ table(predictions$class, test.transformed$species)
 mean(predictions$class == test.transformed$species)
 ```
 
-```{r warning=F,message=F,eval=T}
-# Plot
-lda.data <- cbind(train.transformed, predict(model)$x)
-ggplot(lda.data, aes(LD1, LD2)) +
-  geom_point(aes(color = species))
-```
+The confusion matrix indicates one incorrect prediction with an overall model accuracy of 98.78%.
+
+The 2D subspace plot of LD1 and LD2 on the test dataset show a similar pattern to the scatterplot on the training data. The plot does show one outlier Chinstrap observation.
 
 ```{r warning=F,message=F,eval=T}
+
+# Plot
+lda.data <- cbind(test.transformed, predictions$x)
+ggplot(lda.data, aes(LD1, LD2)) +
+  geom_point(aes(color = species))
+
 ldahist(data=predictions$x[,1], g=test.transformed$species)
 
 ldahist(data=predictions$x[,2], g=test.transformed$species)
 ```
 
+The bar plot for LD1 shows a better performance in classifying among the three species, while the LD2 bar plot shows more overlap among the three species. These plots align with the proportion of trace from the initial model output. LD1 accounts for over 88% of the trace, while LD2 accounts for less than 12%.
+
+The partition plots below from the $partimat$ function display the classification of each test observation for each combination of two independent variables. Turns out the plot with the lowest error rate is $bill\_length\_mm$ and $body\_mass\_g$.
+
 ```{r warning=F,message=F,eval=T}
-partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="lda")
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=test.transformed, method="lda")
 ```
 
 \newpage
 
-# Quadratic Discriminant Analysis
+# Quadratic Discriminant Analysis (QDA)
 
-QDA: works well with fewer features, that's when NB works well, works with higher number of features
-
-mixed features can be used for NB
+Quadratic discriminant analysis, similar to linear discriminant analysis, also assumes a multivariate Gaussian distribution, but unlike LDA, QDA assumes each class has a unique covariance matrix. QDA draws the classification distinctions through quadratic decision boundaries, as the name implies, instead of the linear approach of LDA. To allow for even comparison among the three models, the same transformed training dataset is used for the QDA model.
 
 ```{r warning=F,message=F,eval=T}
 # QDA
-
-# Remove 'island' feature as it was causing rank deficiency in group Chinstrap
-#drops <- c("flipper_length_mm", "body_mass_g", "island")
-drops <- c("island")
-train.transformed <- train.transformed[ , !(names(train.transformed) %in% drops)]
-
 # Fit the model
 model <- qda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
 
 # Output model results
 model
 ```
+
+WORDS_HERE
 
 ```{r warning=F,message=F,eval=T}
 # Make predictions
@@ -325,14 +332,23 @@ table(predictions$class, test.transformed$species)
 
 # Model accuracy
 mean(predictions$class == test.transformed$species)
+```
 
-partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="qda")
+The confusion matrix indicates two incorrect predictions with an overall model accuracy of 97.56%. Based on the textbook description of QDA, LDA typically outperforms QDA when relatively fewer training observations are used. Also, as the covariance matrix outlined in the exploratory data analysis, the assumptions are met for the LDA model approach. That being said, the difference in accuracy is based on a single additional incorrect prediction.
+
+The partition plots below capture the quadratic nature of the decision boundaries.
+
+```{r warning=F,message=F,eval=T}
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=test.transformed, method="qda")
 ```
 
 \newpage
 
 # Naive Bayes
 
+Assumes all predictor variables are independent. in the case of numeric features, NB makes a strong assumption that the numerical variable is normally distributed.
+
+WORDS_HERE
 
 ```{r warning=F,message=F,eval=T}
 # Modified for the penguin data
@@ -342,7 +358,11 @@ nbm <- naiveBayes(species~bill_length_mm + flipper_length_mm + bill_depth_mm, da
 
 # Output the model
 nbm
+```
 
+WORDS_HERE
+
+```{r warning=F,message=F,eval=T}
 # Prediction on the dataset
 nb_predictions <- predict(nbm, test.transformed)
 # Confusion matrix to check accuracy
@@ -351,37 +371,15 @@ table(nb_predictions, test.transformed$species)
 mean(nb_predictions == test.transformed$species)
 ```
 
-CONSIDER REMOVING THIS ONE BELOW, ALL I NEED IS A SINGLE NAIVE BAYES, NOT TWO
+The confusion matrix indicates one incorrect prediction with an overall model accuracy of 98.78%. 
 
-```{r warning=F,message=F,eval=T}
-# Getting started with Naive Bayes in mlr
-library(mlr)
-
-# Create a classification task for learning on the Dataset and specify the target feature
-task <- makeClassifTask(data = train.transformed, target="species")
-
-# Initialize the Naive Bayes classifier
-selected_model <- makeLearner("classif.naiveBayes")
-
-# Train the model
-nb_mlr <- train(selected_model, task)
-
-# Read the model learned
-nb_mlr$learner.model
-
-# Predict on the dataset without passing the target feature
-predictions_mlr <- as.data.frame(predict(nb_mlr, newdata = test.transformed))
-
-# Confusion matrix to check accuracy
-table(predictions_mlr[,1], test.transformed$species)
-
-mean(predictions_mlr[,1] == test.transformed$species)
-```
+WORDS_HERE
 
 # Conclusion
 
 ROC curves
 
+WORDS_HERE
 
 Palmer Penguins citation
 
@@ -423,3 +421,10 @@ https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
 https://www.geeksforgeeks.org/naive-bayes-classifier-in-r-programming/
 
 https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
+
+Focus on normal distributions
+
+If n is small and the distribution of the predictors X is approximately normal in each of the classes, the LD model is more stable than logistic regression
+
+Correlation will cause a line in the Gaussian density plot
+
