@@ -23,7 +23,7 @@ library(klaR)
 theme_set(theme_classic())
 ```
 
-Initial Data Inspection
+# Initial Data Inspection
 
 ```{r warning=F,message=F}
 ds <- penguins
@@ -33,15 +33,31 @@ head(ds)
 summary(ds)
 
 dim(ds)
-
-glimpse(ds)
-
-visdat::vis_dat(ds)
 ```
+
+The palmer penguins dataset consists of 8 variables, 7 independent variables and 1 dependent variable (species).
+
+## Variables
+
+- species: species of the penguin observed (dependent variable)
+
+- island: island of penguin's observation
+
+- bill_length_mm: penguin bill length in millimeters
+
+- bill_depth_mm: penguin bill depth in millimeters
+
+- flipper_length_mm: penguin flipper length in millimeters
+
+- body_mass_g: penguin body mass in grams
+
+- sex: penguin sex
+
+- year: year of observation
 
 # Exploratory Data Analysis
 
-For linear discriminant analysis, two assumptions are made about the data. One, the predictors are normally distributed, which means the data follows a Gaussian distribution for each class. Two, the classes have class-specific means but also have equal variance and covariance
+For linear discriminant analysis, two assumptions are made about the data. One, the predictors are normally distributed, which means the data follows a Gaussian distribution for each class. Two, the classes have class-specific means but also have equal variance and covariance.
 
 First step, confirm multivariate normal distribution. A density plot of the four continuous variables by species indicates the normal distribution for the class-specific plots.
 
@@ -80,6 +96,8 @@ The independent variable $bill_length_mm$ stands out by providing a clear distin
 
 So far, the independent variable $bill_length_mm$ is a prime candidate to be included in the generative models. The key will be identifying which of the other variables will provide additional significance to the model.
 
+The following boxplots provide another perspective of the continuous variable relationships across the three species. As already noted, Adelie and Chinstratp show similar means and distributions for three of the four variables. The boxplot does indicate a few outlies across the variable values but nothing egregious.
+
 ```{r warning=F,message=F}
 featurePlot(x = penguins[, 3:6], 
             y = penguins$species, 
@@ -91,12 +109,9 @@ featurePlot(x = penguins[, 3:6],
             auto.key = list(columns = 2))
 ```
 
-With the first assumption confirmed, the second assumption is to confirm the similar covariance across the species classes. The following Covariance checks
-```{r warning=F,message=F}
-# Compute covariance matrix
-#cov_mat <- cov(penguins[,3:6],  use = "complete.obs")
-#round(cov_mat, 2)
+With the first assumption confirmed, the second assumption is to confirm the similar covariance across the species classes. The following covariance checks further identify the relationship between the variables.
 
+```{r warning=F,message=F}
 # Covariance matrix
 p_g <- penguins %>% filter(species == 'Gentoo')
 cov_mat <- cov(p_g[,3:6],  use = "complete.obs")
@@ -109,18 +124,20 @@ round(cov_mat, 2)
 p_c <- penguins %>% filter(species == 'Chinstrap')
 cov_mat <- cov(p_c[,3:6],  use = "complete.obs")
 round(cov_mat, 2)
+```
 
+Comparing the variance of each continuous independent variable across the three species classes, $body\_mass\_g$ shows the divergence in the variance evaluation, particularly for the Gentoo species. Then again, this variable is a weight measured in grams, so perhaps dividing each value by 1000 to measure in kilograms would make the variance seems less divergent. The prior density plot does show the wider distribution among Gentoo species for $body\_mass\_g$.
+
+The covariance, in which a low number indicates a weak relationship, $bill\_length\_mm$ and $bill\_depth\_mm$. Two variables, $bill\_depth\_mm$ and $flipper\_length\_mm$, also show a comparatively low covariance. $bill\_length\_mm$ and $flipper\_length\_mm$ indicates a covariance higher than the aforementioned pairs, but the resulting values across the species classes are much better than the not listed variable pairs.
+
+Assessing the mean of each continuous independent variable for each species class, the variable $bill\_depth\_mm$ highlights the least difference in mean values of four variables. In fact, the difference in mean for Adelie and Chinstrap is one tenth of the measurement.
+
+```{r warning=F,message=F}
 # Means
 p_a[,3:6] %>% summarise_each(funs( mean( .,na.rm = TRUE)))
 p_g[,3:6] %>% summarise_each(funs( mean( .,na.rm = TRUE)))
 p_c[,3:6] %>% summarise_each(funs( mean( .,na.rm = TRUE)))
 ```
-
-Assessing the mean of each continuous independent variable for each species class, the variable $bill\_depth\_mm$ highlights the least difference in mean values of four variables. In fact, the difference in mean for Adelie and Chinstrap is one tenth of the measurement.
-
-Comparing the variance of each continuous independent variable across the three species classes, $body\_mass\_g$ shows the divergence in the variance evaluation, particularly for the Gentoo species. Then again, this variable is a weight measured in grams, so perhaps dividing each value by 1000 to measure in kilograms would make the variance seems less divergent. The prior density plot does show the wider distribution among Gentoo species for $body\_mass\_g$.
-
-Highlighting the covariance, in which a low number indicates a weak relationship, $bill\_length\_mm$ and $bill\_depth\_mm$. Two variables, $bill\_depth\_mm$ and $flipper\_length\_mm$, also show a comparatively low covariance. $bill\_length\_mm$ and $flipper\_length\_mm$ indicates a covariance higher than the aforementioned pairs, but the resulting values across the species classes are much better than the not listed variable pairs.
 
 ## Correlation matrix
 
@@ -137,65 +154,66 @@ corrplot(cor_mat, type = "upper", order = "hclust",
 
 ```
 
-```{r warning=F,message=F,eval=F}
-# Plots of individual variables
-#http://www.sthda.com/english/articles/32-r-graphics-essentials/133-plot-one-variable-frequency-graph-density-distribution-and-more/
+## Categorical Variables
 
+For comprehensive exploratory data analysis, the categorical independent variables are plotted and assessed.
 
-# Change density plot fill colors by groups
-p <- ggplot(penguins, aes(x=bill_length_mm, fill=species)) +
-  geom_density(alpha=0.4)
+The breakdown of penguin species by island indicates an uneven distribution by island. Gentoo only appear on Biscoe island, Chinstrap only appear on Dream, and Adelie appears on all three island under consideration, Torgensen, Dream and Bisco.
 
-p
-
-a <- penguins %>% 
-      filter(species == 'Gentoo') %>%
-      ggplot(aes(x = bill_length_mm))
-
-#a <- ggplot(penguins, aes(x = bill_length_mm))
-
-a + geom_histogram(bins = 30, color = "black", fill = "gray") +
-  geom_vline(aes(xintercept = mean(bill_length_mm)), 
-             linetype = "dashed", size = 0.6)
-
-b <- ggplot(penguins, aes(x = bill_depth_mm))
-
-b + geom_histogram(bins = 30, color = "black", fill = "gray") +
-  geom_vline(aes(xintercept = mean(bill_depth_mm)), 
-             linetype = "dashed", size = 0.6)
-
-c <- ggplot(penguins, aes(x = flipper_length_mm))
-
-c + geom_histogram(bins = 30, color = "black", fill = "gray") +
-  geom_vline(aes(xintercept = mean(flipper_length_mm)), 
-             linetype = "dashed", size = 0.6)
-
-d <- ggplot(penguins, aes(x = body_mass_g))
-
-d + geom_histogram(bins = 30, color = "black", fill = "gray") +
-  geom_vline(aes(xintercept = mean(body_mass_g)), 
-             linetype = "dashed", size = 0.6)
+```{r warning=F,message=F}
+# Count penguins for each species / island
+ggplot(ds, aes(x = island, fill = species)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~species, ncol = 1) +
+  coord_flip()
 ```
 
+The penguin category for sex shows a clear even distribution by species with a few values missing for Adelie and Gentoo species.
 
-# LDA: Linear Discriminant Analysis
+```{r warning=F,message=F}
+# Count penguins for each species / sex
+ggplot(ds, aes(x = sex, fill = species)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~species, ncol = 1) +
+  coord_flip()
+```
 
-LDA does not handle categorical data well.
+The penguin category for year also indicates a relatively even distribution for each species.
 
-LDA assumes the feature variables come from multivariate normal distribution, all of them continuous
+```{r warning=F,message=F}
+# Count penguins for each species / year
+ggplot(ds, aes(x = year, fill = species)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~species, ncol = 1) +
+  coord_flip()
+```
 
-http://www.sthda.com/english/articles/36-classification-methods-essentials/146-discriminant-analysis-essentials-in-r/
+As an additional evaluation of the independent variables, a MANOVA test is applies of the four continuous variables along with year, which is defined as numeric. The categorial variables are not applicable for the MANOVA test. The results show a high significance for the four continuous variables while also indicating the year variable is not significant. These results confirm previous understanding of the independent variables.
 
-LDA assumes the predictors are normally distributed (Gaussian distribution) and that the different classes have class-specific means and equal variance/covariance
+```{r warning=F,message=F}
+# MANOVA test
+manova_res <- manova(cbind(bill_length_mm,bill_depth_mm,flipper_length_mm,body_mass_g,year) ~ species, data = penguins)
+summary.aov(manova_res)
+```
 
-Make sure each variable is normally distributed
+\newpage
 
-https://web.stanford.edu/class/stats202/notes/Classification/LDA.html
-That is, within each class the features have multivariate normal distribution with center depending on the class and common covariance
+# Linear Discriminant Analysis (LDA)
 
-In the covariance matrix in the output, the off-diagonal elements contain the covariances of each pair of variables. The diagonal elements of the covariance matrix contain the variances of each variable. The variance measures how much the data are scattered about the mean.
+Linear discriminant analysis is a classification method that separates classes through linear directions, or linear discrimants. The linear directions are derived as linear combinations of the predictor variables. As outlined above, LDA assumes the feature variables come from multivariate normal distributions and each one continuous. The different classes should also have class-specific means and equal variance/covariance. LDA does not handle categorical data well.
 
-bill_depth, bill_length, body_mass
+To prepare the data for the LDA model, the observations with missing data are removed from the dataset. Next, the categorical variables sex and year are removed. Based on the exploratory data analysis, neither variable appears to distinguish one species from another. Despite LDA not handling categorical data well, I chose to leave the variable island in the dataset as a trial.
+
+In preparation of evaluating the model's accuracy, the penguins dataset is split into training and set partitions. Finally, the training and test datasets are transformed through a preprocessing step to normalize the data. Given the different range and distribution of the independent variable values, particularly the $body\_mass\_g$ variable, the normalization ensures each variable will be weighted based on predictive ability and not based on initial measurement value.
 
 ```{r warning=F,message=F,eval=T}
 # Load the data
@@ -204,7 +222,7 @@ data("penguins")
 # Only complete entries
 penguins <- na.omit(penguins)
 
-# Remove 'year' and 'sex feature
+# Remove 'year' and 'sex' feature
 # Apparently leaving 'island' in for LDA improves the model
 drops <- c("year", "sex")
 penguins <- penguins[ , !(names(penguins) %in% drops)]
@@ -227,6 +245,7 @@ test.transformed <- preproc.param %>% predict(test.data)
 
 ```
 
+
 Focus on normal distributions
 
 If n is small and the distribution of the predictors X is approximately normal in each of the classes, the LD model is more stable than logistic regression
@@ -236,50 +255,51 @@ Correlation will cause a line in the Gaussian density plot
 When there are K classes, linear discriminant analysis can be viewed exactly in a K-1 dimensional plot.
 Measuring which centroid is the closest. Distance in the subspace
 
-
 ```{r warning=F,message=F,eval=T}
 # Fit the model
-model <- lda(species~bill_length_mm + flipper_length_mm, data = train.transformed)
+model <- lda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
+
+# Output Model
+model
+```
+
+```{r warning=F,message=F,eval=T}
 # Make predictions
 predictions <- model %>% predict(test.transformed)
+
+head(predictions$x, 3)
 
 # Confusion matrix
 table(predictions$class, test.transformed$species)
 
 # Model accuracy
 mean(predictions$class == test.transformed$species)
+```
 
-# Output Model
-model
-
-# Display model
-plot(model)
-
-names(predictions)
-
-# Predicted classes
-head(predictions$class, 6)
-# Predicted probabilities of class membership
-head(predictions$posterior, 6)
-# Linear discriminants
-head(predictions$x, 3)
-
+```{r warning=F,message=F,eval=T}
 # Plot
 lda.data <- cbind(train.transformed, predict(model)$x)
 ggplot(lda.data, aes(LD1, LD2)) +
   geom_point(aes(color = species))
-
-# From: https://rpubs.com/Nolan/298913
-plot(model, dimen = 1, type = "b")
-
-
-partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="lda")
-
-# Model accuracy
-mean(predictions$class==test.transformed$species)
-
-sum(predictions$posterior[ ,1] >= .5)
 ```
+
+```{r warning=F,message=F,eval=T}
+ldahist(data=predictions$x[,1], g=test.transformed$species)
+
+ldahist(data=predictions$x[,2], g=test.transformed$species)
+```
+
+```{r warning=F,message=F,eval=T}
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="lda")
+```
+
+\newpage
+
+# Quadratic Discriminant Analysis
+
+QDA: works well with fewer features, that's when NB works well, works with higher number of features
+
+mixed features can be used for NB
 
 ```{r warning=F,message=F,eval=T}
 # QDA
@@ -290,13 +310,13 @@ drops <- c("island")
 train.transformed <- train.transformed[ , !(names(train.transformed) %in% drops)]
 
 # Fit the model
-model <- qda(species~., data = train.transformed)
+model <- qda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
 
 # Output model results
 model
+```
 
-partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="qda")
-
+```{r warning=F,message=F,eval=T}
 # Make predictions
 predictions <- model %>% predict(test.transformed)
 
@@ -306,35 +326,22 @@ table(predictions$class, test.transformed$species)
 # Model accuracy
 mean(predictions$class == test.transformed$species)
 
-# Plot
-
-
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=train.transformed, method="qda")
 ```
 
-https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
+\newpage
+
+# Naive Bayes
 
 
-# QDA: Quadratic Discriminant Analysis
-
-Same link as above
-
-QDA: works well with fewer features, that's when NB works well, works with higher number of features
-
-mixed features can be used for NB
-
-# NB: Naive Bayes
-
-https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
 ```{r warning=F,message=F,eval=T}
 # Modified for the penguin data
 
 # Fitting the Naive Bayes model
-nbm <- naiveBayes(species~., data=train.transformed)
+nbm <- naiveBayes(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data=train.transformed)
 
 # Output the model
 nbm
-
-plot.NaiveBayes(nbm)
 
 # Prediction on the dataset
 nb_predictions <- predict(nbm, test.transformed)
@@ -342,11 +349,15 @@ nb_predictions <- predict(nbm, test.transformed)
 table(nb_predictions, test.transformed$species)
 
 mean(nb_predictions == test.transformed$species)
+```
 
+CONSIDER REMOVING THIS ONE BELOW, ALL I NEED IS A SINGLE NAIVE BAYES, NOT TWO
+
+```{r warning=F,message=F,eval=T}
 # Getting started with Naive Bayes in mlr
 library(mlr)
 
-# Create a classification task for learning on Titantic Dataset and specify the target feature
+# Create a classification task for learning on the Dataset and specify the target feature
 task <- makeClassifTask(data = train.transformed, target="species")
 
 # Initialize the Naive Bayes classifier
@@ -367,9 +378,10 @@ table(predictions_mlr[,1], test.transformed$species)
 mean(predictions_mlr[,1] == test.transformed$species)
 ```
 
+# Conclusion
 
+ROC curves
 
-https://www.geeksforgeeks.org/naive-bayes-classifier-in-r-programming/
 
 Palmer Penguins citation
 
@@ -390,3 +402,24 @@ c. Naive Bayes (30 points)
 a. Samestepsasabovetoconsider
 d. Commentonthemodelsfits/strength/weakness/accuracyforallthesethree models that you worked with. (10 points)
 ```
+
+
+http://www.sthda.com/english/articles/36-classification-methods-essentials/146-discriminant-analysis-essentials-in-r/
+
+Make sure each variable is normally distributed
+
+https://web.stanford.edu/class/stats202/notes/Classification/LDA.html
+That is, within each class the features have multivariate normal distribution with center depending on the class and common covariance
+
+In the covariance matrix in the output, the off-diagonal elements contain the covariances of each pair of variables. The diagonal elements of the covariance matrix contain the variances of each variable. The variance measures how much the data are scattered about the mean.
+
+bill_depth, bill_length, body_mass
+
+# From: https://rpubs.com/Nolan/298913
+plot(model, dimen = 1, type = "b")
+
+https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
+
+https://www.geeksforgeeks.org/naive-bayes-classifier-in-r-programming/
+
+https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
