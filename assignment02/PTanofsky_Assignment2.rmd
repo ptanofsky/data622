@@ -9,7 +9,7 @@ bibliography: bibliography.bib
 
 # Introduction
 
-The purpose of this project is to apply generative model approaches to the Palmer Penguin data set available at https://allisonhorst.github.io/palmerpenguins/articles/intro.html [@ppens]. The first approach performs linear discriminant analysis (LDA) on the dataset in order to predict the species of the penguin subjects. The second approach performs a quadratic discriminant analysis in order to predict the species of penguin subjects. The final approach uses the Naive Bayes modeling approach to also predict the species of the penguin subjects. The exploratory data analysis informs the decisions of the predictor variables included for each generative model. A final comparison of the models are presented in order to compare the accuracy of each.
+The purpose of this project is to apply generative model approaches to the Palmer Penguin data set available at https://allisonhorst.github.io/palmerpenguins/articles/intro.html [@ppens]. The first approach performs linear discriminant analysis (LDA) on the dataset in order to predict the species of the penguin subjects. The second approach performs a quadratic discriminant analysis (QDA) in order to predict the species of penguin subjects. The final approach uses the Naive Bayes modeling approach to also predict the species of the penguin subjects. The exploratory data analysis informs the decisions of the predictor variables included for each generative model. A comparison of the models are presented in order to compare the accuracy of each.
 
 ```{r warning=F, message=F}
 # Import required R libraries
@@ -79,7 +79,7 @@ featurePlot(x = penguins[, 3:6],
             auto.key = list(columns = 3))
 ```
 
-The variable $flipper_length_mm$ shows the clearest example of normal distribution by species class. The four density plots also indicate common evaluations between the Adelie and Chinstrap species for the independent variables flipper_length_mm, body_mass_g, and bill_depth_mm. The remaining continuous variable, bill_length_mm, shows an overlap between the Chinstrap and Gentoo species.
+The variable $flipper\_length\_mm$ shows the clearest example of normal distribution by species class. The four density plots also indicate common evaluations between the Adelie and Chinstrap species for the independent variables $flipper\_length\_mm$, $body\_mass\_g$, and $bill\_depth\_mm$. The remaining continuous variable, $bill\_length\_mm$, shows an overlap between the Chinstrap and Gentoo species.
 
 The scatterplot matrix of the continuous variables indicates the relationships between the independent variables for each of the three penguin species.
 
@@ -95,9 +95,9 @@ featurePlot(x = penguins[, 3:6],
             auto.key = list(columns = 3))
 ```
 
-The independent variable $bill_length_mm$ stands out by providing a clear distinction between the three penguin species when compared with any of the other three independent variables. As seen in the above scatterplot, when using any two of the other three independent variables, the plot results in a clear overlap of the Adelie and Chinstrap species, an expected result given the prior density plots.
+The independent variable $bill\_length\_mm$ stands out by providing a clear distinction between the three penguin species when compared with any of the other three independent variables. As seen in the above scatterplot, when using any two of the other three independent variables, the plot results in a clear overlap of the Adelie and Chinstrap species, an expected result given the prior density plots.
 
-So far, the independent variable $bill_length_mm$ is a prime candidate to be included in the generative models. The key will be identifying which of the other variables will provide additional significance to the model.
+So far, the independent variable $bill\_length\_mm$ is a prime candidate to be included in the generative models. The key will be identifying which of the other variables will provide additional significance to the model.
 
 The following boxplots provide another perspective of the continuous variable relationships across the three species. As already noted, Adelie and Chinstrap show similar means and distributions for three of the four variables. The boxplot does indicate a few outliers across the variable values but nothing egregious.
 
@@ -131,9 +131,9 @@ round(cov_mat, 2)
 
 Comparing the variance of each continuous independent variable across the three species classes, $body\_mass\_g$ shows the divergence in the variance evaluation, particularly for the Gentoo species. Then again, this variable is a weight measured in grams, so perhaps dividing each value by 1000 to measure in kilograms would make the variance seems less divergent. The prior density plot does show the wider distribution among Gentoo species for $body\_mass\_g$.
 
-The covariance, in which a low number indicates a weak relationship, $bill\_length\_mm$ and $bill\_depth\_mm$. Two variables, $bill\_depth\_mm$ and $flipper\_length\_mm$, also show a comparatively low covariance. $bill\_length\_mm$ and $flipper\_length\_mm$ indicates a covariance higher than the aforementioned pairs, but the resulting values across the species classes are much better than the not listed variable pairs.
+The covariance of $bill\_length\_mm$ and $bill\_depth\_mm$ denotes a low number, indicating a weak relationship. Two variables, $bill\_depth\_mm$ and $flipper\_length\_mm$, also show a comparatively low covariance. The pair of $bill\_length\_mm$ and $flipper\_length\_mm$ indicates a covariance higher than the aforementioned pairs, but the resulting values across the three species classes are much better than the other variable pairs.
 
-Assessing the mean of each continuous independent variable for each species class, the variable $bill\_depth\_mm$ highlights the least difference in mean values of four variables. In fact, the difference in mean for Adelie and Chinstrap is one tenth of the measurement.
+Assessing the mean of each continuous independent variable for each species class, the variable $bill\_depth\_mm$ highlights the least difference in mean values of four variables. In fact, the difference in mean for Adelie and Chinstrap is one tenth of a millimeter.
 
 ```{r warning=F,message=F}
 # Means
@@ -144,7 +144,7 @@ p_c[,3:6] %>% summarise_each(funs( mean( .,na.rm = TRUE)))
 
 ## Correlation matrix
 
-Based on the covariance matrix, the correlation matrix should confirm the variable relationships as previously noted. Again, $bill\_length\_mm$ and $bill\_depth\_mm$ show the least correlation. $body\_mass\_g$ and $flipper\_length\_mm$ have a high correlation.
+Based on the covariance matrix, the correlation matrix should confirm the variable relationships as previously noted. Again, $bill\_length\_mm$ and $bill\_depth\_mm$ show the least correlation. Variables $body\_mass\_g$ and $flipper\_length\_mm$ have a high correlation.
 
 ```{r warning=F,message=F}
 # Compute correlation matrix
@@ -173,7 +173,7 @@ ggplot(ds, aes(x = island, fill = species)) +
   coord_flip()
 ```
 
-The penguin category for sex shows a clear even distribution by species with a few values missing for Adelie and Gentoo species.
+The penguin category for sex shows a clear, even distribution by species with a few values missing for Adelie and Gentoo species.
 
 ```{r warning=F,message=F}
 # Count penguins for each species / sex
@@ -199,11 +199,13 @@ ggplot(ds, aes(x = year, fill = species)) +
   coord_flip()
 ```
 
-As an additional evaluation of the independent variables, a MANOVA test is applies of the four continuous variables along with year, which is defined as numeric. The categorical variables are not applicable for the MANOVA test. The results show a high significance for the four continuous variables while also indicating the year variable is not significant. These results confirm previous understanding of the independent variables.
+As an additional evaluation of the independent variables, a MANOVA test is applied on the four continuous variables along with year, which is defined as numeric. The categorical variables are not applicable for the MANOVA test. The results show a high significance for the four continuous variables while also indicating the year variable as not significant. These results confirm previous understanding of the independent variables.
 
 ```{r warning=F,message=F}
 # MANOVA test
-manova_res <- manova(cbind(bill_length_mm,bill_depth_mm,flipper_length_mm,body_mass_g,year) ~ species, data = penguins)
+manova_res <- manova(cbind(bill_length_mm,bill_depth_mm,
+                           flipper_length_mm,body_mass_g,year) ~ species, 
+                     data = penguins)
 summary.aov(manova_res)
 ```
 
@@ -213,7 +215,7 @@ summary.aov(manova_res)
 
 Linear discriminant analysis is a classification method that separates classes through linear directions, or linear discriminants. The linear directions are derived as linear combinations of the predictor variables. As outlined above, LDA assumes the feature variables come from multivariate normal distributions and each one continuous. The different classes should also have class-specific means and equal variance/covariance. LDA does not handle categorical data well.
 
-To prepare the data for the LDA model, the observations with missing data are removed from the dataset. Next, the categorical variables sex and year are removed. Based on the exploratory data analysis, neither variable appears to distinguish one species from another. Despite LDA not handling categorical data well, I chose to leave the variable island in the dataset as a trial.
+To prepare the data for the LDA model, the observations with missing data are removed from the dataset. Next, the categorical variables sex and year are removed. Based on the exploratory data analysis, neither variable appears to distinguish one species from another. Despite LDA not handling categorical data well, I chose to leave the variable $island$ in the dataset in an initial trial not included in this report.
 
 In preparation of evaluating the model's accuracy, the penguins dataset is split into training and set partitions. Finally, the training and test datasets are transformed through a preprocessing step to normalize the data. Given the different range and distribution of the independent variable values, particularly the $body\_mass\_g$ variable, the normalization ensures each variable will be weighted based on predictive ability and not based on initial measurement value.
 
@@ -247,11 +249,12 @@ test.transformed <- preproc.param %>% predict(test.data)
 
 ```
 
-Based on the exploratory data analysis, the three variables selected for the LDA model (and the two subsequent models) are $bill\_length\_mm$, $flipper\_length\_mm$ and $bill\_depth\_mm$. As the $body\_mass\_g$ variable was highly correlated with $bill\_length\_mm$ and $flipper\_length\_mm$, the variable was omitted from the model. The categorical variables were also omitted, as LDA performs best on continuous variables.
+Based on the exploratory data analysis, the three variables selected for the LDA model (and the two subsequent models) are $bill\_length\_mm$, $flipper\_length\_mm$ and $bill\_depth\_mm$. As the $body\_mass\_g$ variable was highly correlated with $bill\_length\_mm$ and $flipper\_length\_mm$, the variable was omitted from the model. All the categorical variables were also omitted, as LDA performs best on continuous variables.
 
 ```{r warning=F,message=F,eval=T}
 # Fit the model
-model.lda <- lda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
+model.lda <- lda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, 
+                 data = train.transformed)
 
 # Output Model
 model.lda
@@ -286,7 +289,7 @@ mean(preds.lda$class == test.transformed$species)
 
 The confusion matrix indicates one incorrect prediction with an overall model accuracy of 98.78%.
 
-The 2D subspace plot of LD1 and LD2 on the test dataset show a similar pattern to the scatterplot on the training data. The plot does show one outlier Chinstrap observation.
+The 2D subspace plot of LD1 and LD2 on the test dataset show a similar pattern to the scatterplot of the training data. The plot does show one outlier Chinstrap observation.
 
 ```{r warning=F,message=F,eval=T}
 
@@ -300,12 +303,13 @@ ldahist(data=preds.lda$x[,1], g=test.transformed$species)
 ldahist(data=preds.lda$x[,2], g=test.transformed$species)
 ```
 
-The bar plot for LD1 shows a better performance in classifying among the three species, while the LD2 bar plot shows more overlap among the three species. These plots align with the proportion of trace from the initial model output. LD1 accounts for over 88% of the trace, while LD2 accounts for less than 12%.
+The bar plot for LD1 above shows a better performance in classifying among the three species, while the LD2 bar plot shows more overlap among the three species. These plots align with the proportion of trace from the initial model output. LD1 accounts for over 88% of the trace, while LD2 accounts for less than 12%.
 
-The partition plots below from the $partimat$ function display the classification of each test observation for each combination of two independent variables. Turns out the plot with the lowest error rate is $bill\_length\_mm$ and $body\_mass\_g$.
+The partition plots below from the $partimat$ function display the classification of each test observation for each combination of two independent variables. The plot with the lowest error rate is $bill\_length\_mm$ and $body\_mass\_g$.
 
 ```{r warning=F,message=F,eval=T}
-partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=test.transformed, method="lda")
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, 
+         data=test.transformed, method="lda")
 ```
 
 \newpage
@@ -317,7 +321,8 @@ Quadratic discriminant analysis, similar to linear discriminant analysis, also a
 ```{r warning=F,message=F,eval=T}
 # QDA
 # Fit the model
-model.qda <- qda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data = train.transformed)
+model.qda <- qda(species~bill_length_mm + flipper_length_mm + bill_depth_mm, 
+                 data = train.transformed)
 
 # Output model results
 model.qda
@@ -349,26 +354,26 @@ test.transformed %>%
 The partition plots below capture the quadratic nature of the decision boundaries.
 
 ```{r warning=F,message=F,eval=T}
-partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data=test.transformed, method="qda")
+partimat(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, 
+         data=test.transformed, method="qda")
 ```
 
 \newpage
 
 # Naive Bayes
 
-The Naive Bayes classifier relies on Bayes theorem of probability. The naive Bayes classifer makes a simplifying assumpiotin which is all predictor variables are conditionally independent of each other in regards to the dependent variable. For numeric features, the Naive Bayes approach makes an assumption that the numerical variables are normally distributed. Due to the assumption of conditional independence, the NB classifier can lead to biased posterior probabilities.
+The Naive Bayes classifier relies on Bayes theorem of probability. The naive Bayes classifier makes a simplifying assumption which is all predictor variables are conditionally independent of each other in regards to the dependent variable. For numeric features, the Naive Bayes approach makes an assumption that the numerical variables are normally distributed. Due to the assumption of conditional independence, the NB classifier can lead to biased posterior probabilities.
 
 ```{r warning=F,message=F,eval=T}
-# Modified for the penguin data
-
 # Fitting the Naive Bayes model
-model.nb <- naiveBayes(species~bill_length_mm + flipper_length_mm + bill_depth_mm, data=train.transformed)
+model.nb <- naiveBayes(species~bill_length_mm + flipper_length_mm + bill_depth_mm, 
+                       data=train.transformed)
 
 # Output the model
 model.nb
 ```
 
-Interestlingly enough, the conditional probabilities of the NB model match the group means for the LDA and QDA models, a good sign for the upcoming predictions.
+Interestingly enough, the conditional probabilities of the NB model match the group means for the LDA and QDA models, a good sign for the upcoming predictions.
 
 ```{r warning=F,message=F,eval=T}
 # Prediction on the dataset
@@ -386,7 +391,7 @@ With the same conditional probabilities of the NB model as the group means of th
 
 ### AUC Comparison
 
-Give the three classifier models resulting near identicial group means and conditional probabilities, along with the near identical accuracy, the following area under the curve plots show results just short of 1.0.
+Give the three classifier models resulting in near identical group means and conditional probabilities, along with the near identical accuracy, the following area under the curve plots show results just short of 1.0.
 
 ```{r warning=F,message=F,eval=T}
 # ROC curves
@@ -417,69 +422,10 @@ plot.roc(rs.nb[[1]], main="Naive Bayes",
 
 Area under the curve results:
 
-- LDA: `r lda.auc`
-
-- QDA: `r qda.auc`
-
-- Naive Bayes: `r nb.auc`
+LDA: `r lda.auc`; QDA: `r qda.auc`; Naive Bayes: `r nb.auc`
 
 # Conclusion
 
-WORDS_HERE
-
-$$
-  @Manual{,
-    title = {palmerpenguins: Palmer Archipelago (Antarctica) penguin data},
-    author = {Allison Marie Horst and Alison Presmanes Hill and Kristen B Gorman},
-    year = {2020},
-    note = {R package version 0.1.0},
-    url = {https://allisonhorst.github.io/palmerpenguins/},
-  }
-$$
-
-# ==== Prompt =====
-
-```{r eval=F}
-Homework # 2 (Generative Models) (100 points) Due on March 12, 11:59pm EST
-We will be working with the Penguin dataset again as we did for Homework #1. Please use "Species" as your target variable. For this assignment, you may want to drop/ignore the variable "year".
-Using the target variable, Species, please conduct:
-a. LinearDiscriminantAnalysis(30points):
-a. Youwanttoevaluateallthe'features'ordependentvariablesandsee what should be in your model. Please comment on your choices.
-b. Justasuggestion:YoumightwanttoconsiderexploringfeaturePlot on the caret package. Basically, you look at each of the features/dependent variables and see how they are different based on species. Simply eye-balling this might give you an idea about which would be strong 'classifiers' (aka predictors).
-c. Fit your LDA model using whatever predictor variables you deem appropriate. Feel free to split the data into training and test sets before fitting the model.
-d. Lookatthefitstatistics/accuracyrates.
-b. QuadraticDiscriminantAnalysis(30points)
-a. Samestepsasabovetoconsider
-c. Naive Bayes (30 points)
-a. Samestepsasabovetoconsider
-d. Commentonthemodelsfits/strength/weakness/accuracyforallthesethree models that you worked with. (10 points)
-```
-
-
-http://www.sthda.com/english/articles/36-classification-methods-essentials/146-discriminant-analysis-essentials-in-r/
-
-Make sure each variable is normally distributed
-
-https://web.stanford.edu/class/stats202/notes/Classification/LDA.html
-That is, within each class the features have multivariate normal distribution with center depending on the class and common covariance
-
-In the covariance matrix in the output, the off-diagonal elements contain the covariances of each pair of variables. The diagonal elements of the covariance matrix contain the variances of each variable. The variance measures how much the data are scattered about the mean.
-
-bill_depth, bill_length, body_mass
-
-# From: https://rpubs.com/Nolan/298913
-plot(model, dimen = 1, type = "b")
-
-https://www.geeksforgeeks.org/linear-discriminant-analysis-in-r-programming/
-
-https://www.geeksforgeeks.org/naive-bayes-classifier-in-r-programming/
-
-https://www.r-bloggers.com/2018/01/understanding-naive-bayes-classifier-using-r/
-
-Focus on normal distributions
-
-If n is small and the distribution of the predictors X is approximately normal in each of the classes, the LD model is more stable than logistic regression
-
-Correlation will cause a line in the Gaussian density plot
+Overall, the model fit and accuracy of the three classifier models proved near identical. Given the standard training and test approach to the models, each model produced an accuracy near 1.0. The normalization of the data played a key factor in ensuring the predictor variables received equal weight in the discriminant analysis classifiers. The LDA model outperformed the QDA model as the data assumptions more closely fit the LDA model assumption of multivariate Gaussian distribution of the predictor variables within each class. The QDA model suffered a small amount as the covariance was not unique across the species dependent variable. The Naive Bayes classifier performed just as well as the LDA classifier even though the conditional independence was not met by the predictor variables. As the variables are based on penguin physical measurements, the measurements are bound to be correlated. The assignment presented a good exercise in experimenting with different, yet similar classifiers for a sample dataset. I would expect the QDA and Naive Bayes classifiers to outperform the LDA classifier if the dataset did contain a less correlated set of predictor variables.
 
 # References
