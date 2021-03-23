@@ -6,3 +6,216 @@ date: "`r format(Sys.time(), '%d %B %Y')`"
 output: pdf_document
 ---
 
+```{r warning=F, message=F}
+# Import required R libraries
+library(tidyverse)
+library(vcd)
+library(caret)
+#library(MASS)
+#library(ggplot2)
+#library(mvtnorm)
+#library(e1071)
+#library(klaR)
+#library(pROC)
+#library(corrplot)
+theme_set(theme_classic())
+```
+
+
+```{r warning=F, message=F}
+# Read in loan approval csv
+data <- read.csv("https://raw.githubusercontent.com/ptanofsky/data622/main/assignment03/Loan_approval.csv")
+
+data$Credit_History <- as.factor(data$Credit_History)
+
+data$Total_Income <- data$ApplicantIncome + data$CoapplicantIncome
+
+data$LoanAmt_Per_Month <- data$LoanAmount / data$Loan_Amount_Term
+
+data$Income_To_LoanAmt <- data$Total_Income / data$LoanAmount
+
+data$Income_To_LoanAmtMonth <- data$Total_Income / data$LoanAmt_Per_Month
+
+summary(data)
+
+dim(data)
+```
+
+Dimensions:
+614 observations
+
+13 columns
+
+All columns factor except:
+
+ApplicationIncome: int
+
+CoapplicantIncome: num
+LoanAmount: int
+Loan_Amount_Term: int
+Credit_History: int, should probably be factor
+
+Loan_ID: Unique identifier
+Gender: Female|Male
+Married: No|Yes
+
+
+
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / gender
+ggplot(data, aes(x = Gender, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Gender + Loan_Status, data = data)
+```
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / married
+ggplot(data, aes(x = Married, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Married + Loan_Status, data = data)
+```
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / dependents
+ggplot(data, aes(x = Dependents, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Dependents + Loan_Status, data = data)
+```
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / Education
+ggplot(data, aes(x = Education, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Education + Loan_Status, data = data)
+```
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / Self_Employed
+ggplot(data, aes(x = Self_Employed, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Self_Employed + Loan_Status, data = data)
+```
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / Credit_History
+ggplot(data, aes(x = Credit_History, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Credit_History + Loan_Status, data = data)
+```
+
+```{r warning=F, message=F}
+# Count penguins for each loan status / Property_Area
+ggplot(data, aes(x = Property_Area, fill = Loan_Status)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("darkorange", "purple", "cyan4"),
+                    guide = F) +
+  theme_minimal() +
+  facet_wrap(~Loan_Status, ncol = 1) +
+  coord_flip()
+
+mosaic(~ Property_Area + Loan_Status, data = data)
+```
+
+```{r warning=F,message=F}
+# Overlayed density plots
+featurePlot(x = data[, 7:10],
+            y = data$Loan_Status,
+            plot = "density",
+            # Pass in options to xyplot() to
+            # make it prettier
+            scales = list(x = list(relation="free"),
+                          y = list(relation="free")),
+            adjust = 1.5,
+            pch = "|",
+            layout = c(2, 2),
+            auto.key = list(columns = 3))
+
+# Overlayed density plots
+featurePlot(x = data[, 14:17],
+            y = data$Loan_Status,
+            plot = "density",
+            # Pass in options to xyplot() to
+            # make it prettier
+            scales = list(x = list(relation="free"),
+                          y = list(relation="free")),
+            adjust = 1.5,
+            pch = "|",
+            layout = c(2, 2),
+            auto.key = list(columns = 3))
+```
+
+
+```{r warning=F,message=F}
+# Use featurePlot
+# https://topepo.github.io/caret/visualizations.html
+
+# Scatterplot
+featurePlot(x = data[, 7:10],
+            y = data$Loan_Status,
+            plot = "pairs",
+            # Add a key at the top
+            auto.key = list(columns = 3))
+            
+featurePlot(x = data[, 14:17],
+            y = data$Loan_Status,
+            plot = "pairs",
+            # Add a key at the top
+            auto.key = list(columns = 3))
+```
+
+```{r warning=F,message=F}
+featurePlot(x = data[, 7:10], 
+            y = data$Loan_Status,
+            plot = "box", 
+            ## Pass in options to bwplot() 
+            scales = list(y = list(relation="free"),
+                          x = list(rot = 90)),  
+            layout = c(2,2), 
+            auto.key = list(columns = 2))
+
+featurePlot(x = data[, 14:17], 
+            y = data$Loan_Status,
+            plot = "box", 
+            ## Pass in options to bwplot() 
+            scales = list(y = list(relation="free"),
+                          x = list(rot = 90)),  
+            layout = c(2,2), 
+            auto.key = list(columns = 2))
+```
