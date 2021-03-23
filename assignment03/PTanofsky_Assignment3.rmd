@@ -1,0 +1,8 @@
+---
+title: "DATA 622 Assignment 3"
+subtitle: "CUNY: Spring 2021"
+author: "Philip Tanofsky"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: pdf_document
+---
+
