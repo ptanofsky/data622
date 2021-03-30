@@ -8,7 +8,6 @@ output: pdf_document
 
 ```{r warning=F, message=F}
 # Import required R libraries
-library(tidyverse)
 library(vcd)
 library(caret)
 #library(MASS)
@@ -19,6 +18,15 @@ library(caret)
 #library(pROC)
 #library(corrplot)
 theme_set(theme_classic())
+
+library(tidyverse)
+library(tidymodels)
+library(skimr)
+library(baguette)
+library(future)
+library(xgboost)
+library(vip)
+library(rpart.plot)
 ```
 
 
@@ -62,7 +70,7 @@ Married: No|Yes
 
 
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / gender
 ggplot(data, aes(x = Gender, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -75,7 +83,7 @@ ggplot(data, aes(x = Gender, fill = Loan_Status)) +
 mosaic(~ Gender + Loan_Status, data = data)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / married
 ggplot(data, aes(x = Married, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -88,7 +96,7 @@ ggplot(data, aes(x = Married, fill = Loan_Status)) +
 mosaic(~ Married + Loan_Status, data = data)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / dependents
 ggplot(data, aes(x = Dependents, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -101,7 +109,7 @@ ggplot(data, aes(x = Dependents, fill = Loan_Status)) +
 mosaic(~ Dependents + Loan_Status, data = data)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / Education
 ggplot(data, aes(x = Education, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -114,7 +122,7 @@ ggplot(data, aes(x = Education, fill = Loan_Status)) +
 mosaic(~ Education + Loan_Status, data = data)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / Self_Employed
 ggplot(data, aes(x = Self_Employed, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -127,7 +135,7 @@ ggplot(data, aes(x = Self_Employed, fill = Loan_Status)) +
 mosaic(~ Self_Employed + Loan_Status, data = data)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / Credit_History
 ggplot(data, aes(x = Credit_History, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -140,7 +148,7 @@ ggplot(data, aes(x = Credit_History, fill = Loan_Status)) +
 mosaic(~ Credit_History + Loan_Status, data = data)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F,eval=F}
 # Count penguins for each loan status / Property_Area
 ggplot(data, aes(x = Property_Area, fill = Loan_Status)) +
   geom_bar(alpha = 0.8) +
@@ -153,7 +161,7 @@ ggplot(data, aes(x = Property_Area, fill = Loan_Status)) +
 mosaic(~ Property_Area + Loan_Status, data = data)
 ```
 
-```{r warning=F,message=F}
+```{r warning=F,message=F,eval=F}
 # Overlayed density plots
 featurePlot(x = data[, 7:10],
             y = data$Loan_Status,
@@ -182,7 +190,7 @@ featurePlot(x = data[, 14:17],
 ```
 
 
-```{r warning=F,message=F}
+```{r warning=F,message=F,eval=F}
 # Use featurePlot
 # https://topepo.github.io/caret/visualizations.html
 
@@ -200,7 +208,7 @@ featurePlot(x = data[, 14:17],
             auto.key = list(columns = 3))
 ```
 
-```{r warning=F,message=F}
+```{r warning=F,message=F,eval=F}
 featurePlot(x = data[, 7:10], 
             y = data$Loan_Status,
             plot = "box", 
@@ -219,3 +227,208 @@ featurePlot(x = data[, 14:17],
             layout = c(2,2), 
             auto.key = list(columns = 2))
 ```
+
+## Decision Tree for Loan Approval data
+
+decision_tree() function from tidymodels
+
+3 hyperparameters
+- cost_complexity
+- tree_depth
+- min_n
+
+```{r warning=F,message=F}
+# https://www.gmudatamining.com/lesson-13-r-tutorial.html
+
+lap_data <- data
+summary(data)
+
+
+# Data splitting
+set.seed(1234)
+
+lap_data_split <- initial_split(lap_data, prop=0.75,
+                              strata = Loan_Status)
+
+lap_training <- lap_data_split %>% training()
+
+lap_test <- lap_data_split %>% testing()
+
+set.seed(1234)
+lap_folds <- vfold_cv(lap_training, v=3)
+
+```
+
+```{r warning=F,message=F,evel=F}
+# Data exploration
+# https://bcullen.rbind.io/post/2020-06-02-tidymodels-decision-tree-learning-in-r/
+
+# Need to fix
+lap_data %>%
+  select(-contains("ID")) %>%
+#  modify_if(is.character, as.factor) %>%
+  skim() %>%
+  select()
+
+```
+
+```{r warning=F,message=F}
+# Feature Engineering
+
+lap_recipe <- recipe(Loan_Status ~ ., data = lap_training) %>%
+  step_YeoJohnson(all_numeric(), -all_outcomes()) %>%
+  step_normalize(all_numeric(), -all_outcomes()) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+lap_recipe %>%
+  prep() %>%
+  bake(new_data = lap_training)
+
+```
+
+```{r warning=F,message=F}
+# Define model
+tree_model <- decision_tree(cost_complexity = tune(),
+                            tree_depth = tune(),
+                            min_n = tune()) %>%
+  set_engine('rpart') %>%
+  set_mode('classification')
+```
+
+```{r warning=F,message=F}
+# Define workflow
+tree_workflow <- workflow() %>%
+  add_model(tree_model) %>%
+  add_recipe(lap_recipe)
+```
+
+```{r warning=F,message=F}
+# Create a grid of hyperparemeter values to test
+tree_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          min_n(),
+                          levels = 2)
+# view grid
+tree_grid
+```
+
+```{r warning=F,message=F}
+# Tune decision tree workflow
+set.seed(1234)
+
+tree_tuning <- tree_workflow %>%
+  tune_grid(resamples = lap_folds,
+            grid = tree_grid)
+
+tree_tuning %>% show_best('roc_auc')
+```
+
+```{r warning=F,message=F}
+# Select best model based on roc_auc
+best_tree <- tree_tuning %>%
+  select_best(metric = 'roc_auc')
+
+# view the best tree parameters
+best_tree
+```
+
+```{r warning=F,message=F}
+# finalize workflow
+final_tree_workflow <- tree_workflow %>%
+  finalize_workflow(best_tree)
+```
+
+```{r warning=F,message=F}
+# fit the model
+tree_wf_fit <- final_tree_workflow %>%
+  fit(data = lap_training)
+```
+
+```{r warning=F,message=F}
+tree_fit <- tree_wf_fit %>%
+  pull_workflow_fit()
+
+vip(tree_fit)
+```
+
+```{r warning=F,message=F}
+rpart.plot(tree_fit$fit, roundint=FALSE)
+```
+
+```{r warning=F,message=F}
+# train and evaluate
+tree_last_fit <- final_tree_workflow %>%
+  last_fit(lap_data_split)
+
+tree_last_fit %>% collect_metrics()
+```
+
+```{r warning=F,message=F}
+tree_last_fit %>% collect_predictions() %>%
+  roc_curve(truth = Loan_Status, estimate = .pred_Y) %>%
+  autoplot()
+
+tree_predictions <- tree_last_fit %>% collect_predictions()
+
+conf_mat(tree_predictions, truth = Loan_Status, estimate = .pred_class)
+```
+
+## Gradient Boosting for Loan Approval data
+```{r warning=F,message=F}
+# https://bcullen.rbind.io/post/2020-06-02-tidymodels-decision-tree-learning-in-r/
+# Section Boosted Trees
+
+# Specify the model
+mod_boost <- boost_tree() %>%
+  set_engine("xgboost", nthreads = parallel::detectCores()) %>%
+  set_mode("classification")
+
+```
+
+```{r warning=F,message=F}
+# Create workflow
+boost_workflow <- workflow() %>%
+  add_recipe(lap_recipe) %>%
+  add_model(mod_boost)
+```
+
+```{r warning=F,message=F}
+# fit the model
+boost_wf_fit <- boost_workflow %>%
+  fit(data = lap_training)
+```
+
+```{r warning=F,message=F}
+boost_fit <- boost_wf_fit %>%
+  pull_workflow_fit()
+
+vip(boost_fit)
+```
+
+```{r warning=F,message=F}
+# train and evaluate
+boost_last_fit <- boost_workflow %>%
+  last_fit(lap_data_split)
+
+boost_last_fit %>% collect_metrics()
+```
+
+```{r warning=F,message=F}
+boost_last_fit %>% collect_predictions() %>%
+  roc_curve(truth = Loan_Status, estimate = .pred_Y) %>%
+  autoplot()
+
+boost_predictions <- boost_last_fit %>% collect_predictions()
+
+boost_predictions
+
+conf_mat(boost_predictions, truth = Loan_Status, estimate = .pred_class)
+```
+
+
+
+
+
+
+
+
