@@ -1,0 +1,265 @@
+---
+title: "DATA 622 Assignment 4"
+author: "Philip Tanofsky"
+date: "4/23/2021"
+output: html_document
+---
+
+```{r warning=F, message=F}
+# Import required R libraries
+library(vcd)
+#library(kernlab)
+library(caret)
+#library(MASS)
+library(ggplot2)
+#library(mvtnorm)
+#library(e1071)
+#library(klaR)
+#library(pROC)
+#library(corrplot)
+theme_set(theme_classic())
+
+library(tidyverse)
+#library(tidymodels)
+#library(skimr)
+#library(baguette)
+#library(future)
+#library(xgboost)
+#library(vip)
+#library(rpart.plot)
+```
+
+```{r warning=F, message=F}
+# Read in loan approval csv
+data <- read_csv("https://raw.githubusercontent.com/completegraph/DATA622_MACHINELEARNING/main/HW4/ADHD_data.csv")
+names(data) <- make.names(names(data),unique = TRUE)
+
+# Remove ADHD individual questions
+#data <- data[, -c(5:22)]
+
+# Remove MD individual questions
+#data <- data[, -c(6:20)]
+
+# Remove Psych.meds (too many NAs)
+#data <- data[, -c(21)]
+
+summary(data)
+```
+
+```{r warning=F, message=F}
+# https://add.org/wp-content/uploads/2015/03/adhd-questionnaire-ASRS111.pdf
+# ADHD Part A: Questions 1-6
+# 1. >=3 is Y
+# 2. >=3 is Y
+# 3. >=3 is Y
+# 4. >=4 is Y
+# 5. >=4 is Y
+# 6. >=4 is Y
+# >= 4 Y is means patient has symptoms highly consistent with ADHD in adults
+
+data$ADHD.Adult.Count <- 0
+data$ADHD.Adult.Count <- ifelse(data$ADHD.Q1 >= 3, data$ADHD.Adult.Count+1, data$ADHD.Adult.Count)
+data$ADHD.Adult.Count <- ifelse(data$ADHD.Q2 >= 3, data$ADHD.Adult.Count+1, data$ADHD.Adult.Count)
+data$ADHD.Adult.Count <- ifelse(data$ADHD.Q3 >= 3, data$ADHD.Adult.Count+1, data$ADHD.Adult.Count)
+data$ADHD.Adult.Count <- ifelse(data$ADHD.Q4 >= 4, data$ADHD.Adult.Count+1, data$ADHD.Adult.Count)
+data$ADHD.Adult.Count <- ifelse(data$ADHD.Q5 >= 5, data$ADHD.Adult.Count+1, data$ADHD.Adult.Count)
+data$ADHD.Adult.Count <- ifelse(data$ADHD.Q6 >= 4, data$ADHD.Adult.Count+1, data$ADHD.Adult.Count)
+data$ADHD.Adult <- ifelse(data$ADHD.Adult.Count >= 4, "Y", "N")
+data$ADHD.Adult <- as.factor(data$ADHD.Adult)
+summary(data)
+
+data$Suicide <- as.factor(data$Suicide)
+
+ggplot(data, aes(x=data$ADHD.Adult.Count, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+# The resulting histogram above doesn't show much ADHD with suicide, in fact the lower score has higher suicide rates
+```
+
+```{r warning=F, message=F}
+# https://www.ohsu.edu/sites/default/files/2019-06/cms-quality-bipolar_disorder_mdq_screener.pdf
+# Mood disorder questionnaire
+# How to Score
+# Answers Yes to 7 or more of the events in question #1
+# AND
+# Answers Yes to question #2
+# AND
+# Answers Moderate problem or Serious problem to question #3
+data$MD.Q1.Count <- 0
+data$MD.Q1.Count <- ifelse(data$MD.Q1a == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1b == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1c == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1d == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1e == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1f == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1g == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1h == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1i == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1j == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1k == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1L == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1m == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD <- ifelse(data$MD.Q1.Count>= 7 & data$MD.Q2 == 1 & data$MD.Q3 >= 2, "Y", "N")
+data$MD <- as.factor(data$MD)
+summary(data)
+
+ggplot(data, aes(x=data$MD.Q1.Count, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+
+mosaic( ~ MD + Suicide, data = data)
+```
+ggplot(data = data) +
+  geom_mosaic(aes(x = MD, fill = Suicide)) +   
+  labs(y="Suicide", x="Mood Disorder", title = "Mosaic Plot (2 variables)") 
+
+
+```{r warning=F, message=F}
+
+
+ggplot(data, aes(x=ADHD.Q1, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q2, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q3, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q4, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q5, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q6, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q7, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q8, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q9, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q10, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q11, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q12, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q13, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q14, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q15, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q16, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q17, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Q18, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=ADHD.Total, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+#---- MD questions below
+
+ggplot(data, aes(x=MD.Q1a, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1b, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1c, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1d, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1e, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1f, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1g, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1h, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1i, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1j, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1k, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1L, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q1m, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q2, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.Q3, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+
+ggplot(data, aes(x=MD.TOTAL, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+```  
+
+# Remove instances with missing data
+data <- na.omit(data)
+
+#data <- data %>% 
+#  mutate_if(is.numeric, as.factor)
+
+data$Suicide <- as.factor(data$Suicide)
+
+
+data <- data %>% mutate(
+             fSex = case_when( Sex == 1 ~ "M", 
+                               Sex == 2 ~ "F" ) ,
+             fRace = case_when(
+                  Race == 1 ~ "WH" ,
+                  Race == 2 ~ "AF" ,
+                  Race == 3 ~ "HI" ,
+                  Race == 4 ~ "AS" ,
+                  Race == 5 ~ "NA" ,
+                  Race == 6 ~ "OT"
+              ) ,
+             fCO = case_when(Court.order == 0 ~ "No" ,
+                             Court.order == 1 ~ "Yes") ,
+             fHViol = case_when( Hx.of.Violence == 0 ~ "No",
+                                 Hx.of.Violence == 1 ~ "Yes") ,
+             fDCond = case_when( Disorderly.Conduct == 0 ~ "No" ,
+                                 Disorderly.Conduct == 1 ~ "Yes") ,
+             fSuicide  = case_when( Suicide == 0 ~ "No" ,
+                                    Suicide == 1 ~ "Yes")
+             )
+
+data$fSex <- as.factor(data$fSex)
+data$fSuicide <- as.factor(data$fSuicide)
+data$fHViol <- as.factor(data$fHViol)
+data$fAbuse <- factor(as.character(data$Abuse), levels=c("0","1","2","3","4","5","6","7"), ordered=TRUE)
+data$fEducation <- factor(as.character(data$Education), levels=c("6","7","8","9","10","11","12","13","14","15","16","17","18","19"), ordered=TRUE)
+
+# Display skim summary
+skim(data)
+```

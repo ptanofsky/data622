@@ -35,16 +35,16 @@ data <- read_csv("https://raw.githubusercontent.com/completegraph/DATA622_MACHIN
 names(data) <- make.names(names(data),unique = TRUE)
 
 # Remove ADHD individual questions
-data <- data[, -c(5:22)]
+#data <- data[, -c(5:22)]
 
 # Remove MD individual questions
-data <- data[, -c(6:20)]
+#data <- data[, -c(6:20)]
 
 # Remove Psych.meds (too many NAs)
-data <- data[, -c(21)]
+#data <- data[, -c(21)]
 
 # Remove instances with missing data
-data <- na.omit(data)
+#data <- na.omit(data)
 
 #data <- data %>% 
 #  mutate_if(is.numeric, as.factor)
@@ -70,35 +70,74 @@ data <- data %>% mutate(
              fDCond = case_when( Disorderly.Conduct == 0 ~ "No" ,
                                  Disorderly.Conduct == 1 ~ "Yes") ,
              fSuicide  = case_when( Suicide == 0 ~ "No" ,
-                                    Suicide == 1 ~ "Yes")
+                                    Suicide == 1 ~ "Yes"),
+             fMD.Q2  = case_when( MD.Q2 == 0 ~ "No" ,
+                                  MD.Q2 == 1 ~ "Yes")
              )
 
 data$fSex <- as.factor(data$fSex)
 data$fSuicide <- as.factor(data$fSuicide)
 data$fHViol <- as.factor(data$fHViol)
 data$fAbuse <- factor(as.character(data$Abuse), levels=c("0","1","2","3","4","5","6","7"), ordered=TRUE)
+data$ADHD.Q16 <- factor(as.character(data$ADHD.Q16), levels=c("0","1","2","3","4"), ordered=TRUE)
+#data$MD.Q3 <- factor(as.character(data$MD.Q3), levels=c("0","1","2","3"), ordered=TRUE)
 data$fEducation <- factor(as.character(data$Education), levels=c("6","7","8","9","10","11","12","13","14","15","16","17","18","19"), ordered=TRUE)
+
+data$MD.Q1.Count <- 0
+data$MD.Q1.Count <- ifelse(data$MD.Q1a == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1b == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1c == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1d == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1e == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1f == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1g == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1h == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1i == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1j == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1k == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1L == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1m == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+#data$MD <- ifelse(data$MD.Q1.Count>= 7 & data$MD.Q2 == 1 & data$MD.Q3 >= 2, "Y", "N")
+#data$MD <- as.factor(data$MD)
+
+# Too many missing values, just remove the column
+data$Psych.meds <- NULL
+
+# Remove instances with missing data
+data <- na.omit(data)
 
 # Display skim summary
 skim(data)
 ```
+```{r warning=F, message=F, eval=F}
+ggplot(data, aes(x=data$Psych.meds, color=Suicide)) +
+  geom_histogram(fill="black", alpha=0.5, position="dodge")
+```
 
+```{r warning=F, message=F}
+data %>%
+  group_by(Suicide) %>%
+  mutate(count = n())
+# of the 142, Suicide Yes=45, Suicide No=97
+```
 
 http://www.rebeccabarter.com/blog/2020-03-25_machine_learning/
 ```{r warning=F, message=F}
 # Split into training and test data
 set.seed(1234)
 # split the data into training (75%) and testing (25%)
-data_split <- initial_split(data, prop = .7)
+data_split <- initial_split(data, prop = .75)
 data_split
 
 data_train <- training(data_split)
 data_test <- testing(data_split)
+
+data_train
 ```
 
 ```{r warning=F, message=F}
 # Create CV object from training data
-data_cv <- vfold_cv(data_train, v=5, repeats=5)
+data_cv <- vfold_cv(data_train, v=5, repeats=3)
 #data_cv <- vfold_cv(data_train)
 ```
 
@@ -114,7 +153,19 @@ Age + Sex + Race + ADHD.Total + MD.TOTAL + Alcohol + THC + Cocaine + Stimulants 
 
 ```{r warning=F, message=F}
 # https://www.tidymodels.org/learn/work/tune-svm/
-data_recipe <- recipe(fSuicide ~ fSex + ADHD.Total + MD.TOTAL + fAbuse, data = data) %>%
+#data_recipe <- recipe(fSuicide ~ fSex + ADHD.Total + MD.TOTAL + fAbuse, data = data) %>%
+# 69%
+#data_recipe <- recipe(fSuicide ~ fSex + ADHD.Total + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
+# 71%
+#data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
+# 0.7142857
+#data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + fMD.Q2 + MD.Q3 + fAbuse + ADHD.Q16, data = data) %>%
+# 0.6571429
+#data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + fMD.Q2 + MD.Q3 + fAbuse, data = data) %>%
+#0.6285714
+#data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
+#0.6285714
+data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
   step_normalize(all_numeric(), -all_outcomes()) %>%
   step_dummy(all_nominal(), -all_outcomes())  %>%
   # Remove any zero variance predictors
@@ -131,7 +182,7 @@ Age + Sex + Race + ADHD.Total + MD.TOTAL + Alcohol + THC + Cocaine + Stimulants 
 
 ```{r warning=F, message=F}
 set.seed(1234)
-data_rs <- bootstraps(data, times = 30)
+data_rs <- bootstraps(data, times = 5)
 ```
 
 ```{r warning=F, message=F}
@@ -260,14 +311,28 @@ final_svm_wf <- svm_wf %>%
 # fit the model
 svm_wf_fit <- final_svm_wf %>%
   fit(data = data_train)
+
+#https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
+svm_wf_fit
 ```
 
 ```{r warning=F,message=F}
+library(vip)
 svm_fit <- svm_wf_fit %>%
   pull_workflow_fit()
 
+#http://www.rebeccabarter.com/blog/2020-03-25_machine_learning/#evaluate-the-model-on-the-test-set
+svm_fit$fit
+
 # Received error model-specific variable importance scores are currently not available for this type of model
 #vip(svm_fit)
+
+# https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
+svm_wf_fit %>%
+  pull_workflow_fit() %>%
+  vip(method = "permute", 
+      target = "fSuicide", metric = "rsquared",
+      pred_wrapper = kernlab::predict, train = data_train)
 ```
 
 ```{r warning=F,message=F}
@@ -300,35 +365,23 @@ svm_predictions
 mean(svm_predictions$.pred_class == svm_predictions$fSuicide)
 ```
 
-```{r warning=F, message=F, eval=F}
-svm_fit <- svm_wf %>%
-  last_fit(data_split)
-
-svm_fit
-```
-
-```{r warning=F, message=F, eval=F}
-test_perf <- svm_fit %>% collect_metrics()
-test_perf
-```
-
-```{r warning=F, message=F, eval=F}
-test_predictions <- svm_fit %>% collect_predictions()
-test_predictions
-```
 
 
-```{r warning=F, message=F, eval=F}
-test_predictions %>%
-  conf_mat(truth = fSuicide, estimate = .pred_class)
-```
-
-```{r warning=F, message=F, eval=F}
-test_predictions %>%
+```{r warning=F, message=F}
+svm_predictions %>%
   ggplot() +
-  geom_density(aes(x = .pred_pos, fill = data),
+  geom_density(aes(x = .pred_Yes, fill = fSuicide),
                alpha = 0.5)
 ```
+
+```{r warning=F, message=F}
+# https://www.tidymodels.org/learn/work/tune-svm/
+augment(recipe_res) %>%
+  ggplot(aes(MD.Q1.Count, .pred_Yes, color = fSuicide)) +
+  geom_point(show.legend = FALSE) +
+  facet_wrap(~fSuicide)
+```
+
 
 Results
 
@@ -362,3 +415,11 @@ svm_rbf has never done anything but always predict No for suicide, no discernmen
 
 0.6904762
 poly with BoxCox
+
+
+https://stackoverflow.com/questions/62772397/integration-of-variable-importance-plots-within-the-tidy-modelling-framework
+https://github.com/tidymodels/parsnip/issues/311
+https://www.tidymodels.org/learn/work/tune-svm/
+https://stackoverflow.com/questions/8287344/cannot-plot-graph-for-an-svm-model-in-r
+https://stackoverflow.com/questions/23613952/support-vector-machine-visualization-in-r
+https://stackoverflow.com/questions/1142294/how-do-i-plot-a-classification-graph-of-a-svm-in-r
