@@ -1,0 +1,60 @@
+---
+title: "DATA 622 Assignment 4 v3"
+author: "Philip Tanofsky"
+date: "4/28/2021"
+output: html_document
+---
+
+```{r warning=F, message=F}
+# Import required R libraries
+#library(vcd)
+#library(caret)
+#library(MASS)
+#library(ggplot2)
+#library(mvtnorm)
+#library(klaR)
+#library(pROC)
+#library(corrplot)
+#theme_set(theme_classic())
+
+library(tidyverse)
+library(kernlab)
+library(e1071)
+library(RColorBrewer)
+#library(tidymodels)
+#library(skimr)
+#library(baguette)
+#library(future)
+#library(xgboost)
+#library(vip)
+#library(rpart.plot)
+```
+
+```{r warning=F, message=F}
+# Read in loan approval csv
+data <- read_csv("New_adhd.csv")
+names(data) <- make.names(names(data),unique = TRUE)
+
+# Remove ADHD individual questions
+#data <- data[, -c(5:22)]
+
+# Remove MD individual questions
+#data <- data[, -c(6:20)]
+
+# Remove Psych.meds (too many NAs)
+#data <- data[, -c(21)]
+
+summary(data)
+```
+
+
+```{r warning=F, message=F}
+# http://uc-r.github.io/svm
+# set pseudorandom number generator
+set.seed(123)
+# sample training data and fit model
+train <- base::sample(200,100, replace = FALSE)
+svmfit <- svm(y~., data = dat[train,], kernel = "radial", gamma = 1, cost = 1)
+# plot classifier
+plot(svmfit, dat)
+```

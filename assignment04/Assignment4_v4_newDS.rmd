@@ -29,7 +29,7 @@ library(vip)
 library(rpart.plot)
 ```
 
-```{r warning=F, message=F}
+```{r warning=F, message=F, eval=F}
 # Read in loan approval csv
 data <- read_csv("https://raw.githubusercontent.com/completegraph/DATA622_MACHINELEARNING/main/HW4/ADHD_data.csv")
 names(data) <- make.names(names(data),unique = TRUE)
@@ -109,27 +109,46 @@ data <- na.omit(data)
 # Display skim summary
 skim(data)
 ```
-```{r warning=F, message=F, eval=F}
-data <- read_csv("New_adhd.csv")
-```
-
-
-```{r warning=F, message=F, eval=F}
-ggplot(data, aes(x=data$Psych.meds, color=Suicide)) +
-  geom_histogram(fill="black", alpha=0.5, position="dodge")
-```
 
 ```{r warning=F, message=F}
-data %>%
-  group_by(Suicide) %>%
-  mutate(count = n())
-# of the 142, Suicide Yes=45, Suicide No=97
+data <- read_csv("New_adhd.csv")
+
+data$MD.Q1.Count <- 0
+data$MD.Q1.Count <- ifelse(data$MD.Q1a == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1b == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1c == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1d == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1e == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1f == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1g == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1h == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1i == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1j == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1k == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1L == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+data$MD.Q1.Count <- ifelse(data$MD.Q1m == 1, data$MD.Q1.Count+1, data$MD.Q1.Count)
+
+data$fSex <- as.factor(data$fSex)
+data$fSuic <- as.factor(data$fSuic)
+data$fAbuse <- factor(data$fAbuse, levels=c("0","1","2","3","4","5","6","7"), ordered=TRUE)
+
+
+data$MD.Q2 <- as.factor(data$MD.Q2)
+#data$MD.Q3 <- factor(as.character(data$MD.Q3), levels=c("0","1","2","3"), ordered=TRUE)
+skim(data)
+```
+
+
+```{r warning=F, message=F}
+table(data$fSuic)
+
+# of the 171, Suicide Yes=49, Suicide No=122
 ```
 
 http://www.rebeccabarter.com/blog/2020-03-25_machine_learning/
 ```{r warning=F, message=F}
 # Split into training and test data
-set.seed(1234)
+set.seed(123)
 # split the data into training (75%) and testing (25%)
 data_split <- initial_split(data, prop = .75)
 data_split
@@ -146,13 +165,6 @@ data_cv <- vfold_cv(data_train, v=5, repeats=3)
 #data_cv <- vfold_cv(data_train)
 ```
 
-```{r warning=F, message=F, eval=F}
-# Recipe attempt v0 ... ignore for now
-# Define the recipe
-data_recipe <- recipe(Suicide ~ THC + Cocaine + Opioids, data = data) %>%
-  step_normalize(all_numeric()) %>%
-  step_knnimpute(all_predictors())
-```
 
 Age + Sex + Race + ADHD.Total + MD.TOTAL + Alcohol + THC + Cocaine + Stimulants + Sedative.hypnotics + Opioids + Court.order + Education + Hx.of.Violence + Disorderly.Conduct + Abuse + Non.subst.Dx + Subst.Dx
 
@@ -170,7 +182,7 @@ Age + Sex + Race + ADHD.Total + MD.TOTAL + Alcohol + THC + Cocaine + Stimulants 
 #0.6285714
 #data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
 #0.6285714
-data_recipe <- recipe(fSuicide ~ fSex + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
+data_recipe <- recipe(fSuic ~ fSex + MD.Q1.Count + MD.Q2 + MD.Q3 + fAbuse, data = data) %>%
   step_normalize(all_numeric(), -all_outcomes()) %>%
   step_dummy(all_nominal(), -all_outcomes())  %>%
   # Remove any zero variance predictors
@@ -184,11 +196,6 @@ ADHD, Mood, Abuse and seem to impact women more than men.
 
 All predictors:
 Age + Sex + Race + ADHD.Total + MD.TOTAL + Alcohol + THC + Cocaine + Stimulants + Sedative.hypnotics + Opioids + Court.order + Education + Hx.of.Violence + Disorderly.Conduct + Abuse + Non.subst.Dx + Subst.Dx
-
-```{r warning=F, message=F}
-set.seed(1234)
-data_rs <- bootstraps(data, times = 5)
-```
 
 ```{r warning=F, message=F}
 # Consider log-likelihood statistic
@@ -208,15 +215,6 @@ svm_model <- svm_poly(cost = tune(),
                       degree = tune()) %>% 
   set_engine("kernlab") %>% 
   set_mode("classification") %>% 
-  translate()
-```
-
-```{r warning=F, message=F, eval=F}
-# SVM Model with Radial Basis Function
-svm_model <- svm_rbf(cost = tune(),
-                     rbf_sigma = tune()) %>%
-  set_mode("classification") %>%
-  set_engine("kernlab") %>% 
   translate()
 ```
 
@@ -250,12 +248,12 @@ estimates
 
 ```{r warning=F, message=F}
 # Display top combinations
-show_best(formula_res, metric = "roc_auc")
+show_best(formula_res, metric = "kap")
 ```
 
 ```{r warning=F, message=F}
 # Execute with a recipe
-set.seed(1234)
+set.seed(123)
 recipe_res <-svm_model %>%
   tune_grid(data_recipe,
     resamples = data_cv,
@@ -267,7 +265,7 @@ recipe_res
 
 ```{r warning=F, message=F}
 # Best setting
-show_best(recipe_res, metric = "roc_auc")
+show_best(recipe_res, metric = "kap")
 ```
 
 ```{r warning=F, message=F}
@@ -282,25 +280,11 @@ svm_wf <- workflow() %>%
   add_model(svm_model)
 ```
 
-```{r warning=F, message=F, eval=F}
-# Tune parameters
-svm_grid <- expand.grid(mtry = c(3,4,5))
-
-svm_tune_results <- svm_wf %>%
-  tune_grid(resamples = data_cv,
-            grid = svm_grid,
-            metrics = metric_set(accuracy, roc_auc, kap)
-            )
-
-# Print results
-svm_tune_results %>%
-  collect_metrics()
-```
 
 ```{r warning=F, message=F}
 # Select best model based on roc_auc
 best_svm <- recipe_res %>%
-  select_best(metric = 'roc_auc')
+  select_best(metric = 'kap')
 
 # view the best svm parameters
 best_svm
@@ -341,11 +325,6 @@ svm_fit$fit
 ```
 
 ```{r warning=F,message=F}
-# Received error: Not an rpart object
-#rpart.plot(svm_fit$fit, roundint=FALSE)
-```
-
-```{r warning=F,message=F}
 # train and evaluate
 svm_last_fit <- final_svm_wf %>%
   last_fit(data_split)
@@ -358,16 +337,16 @@ svm_last_fit
 
 ```{r warning=F,message=F}
 svm_last_fit %>% collect_predictions() %>%
-  roc_curve(truth = fSuicide, estimate = .pred_No) %>%
+  roc_curve(truth = fSuic, estimate = .pred_No) %>%
   autoplot()
 
 svm_predictions <- svm_last_fit %>% collect_predictions()
 
-conf_mat(svm_predictions, truth = fSuicide, estimate = .pred_class)
+conf_mat(svm_predictions, truth = fSuic, estimate = .pred_class)
 
 svm_predictions
 
-mean(svm_predictions$.pred_class == svm_predictions$fSuicide)
+mean(svm_predictions$.pred_class == svm_predictions$fSuic)
 ```
 
 
@@ -375,16 +354,16 @@ mean(svm_predictions$.pred_class == svm_predictions$fSuicide)
 ```{r warning=F, message=F}
 svm_predictions %>%
   ggplot() +
-  geom_density(aes(x = .pred_Yes, fill = fSuicide),
+  geom_density(aes(x = .pred_Yes, fill = fSuic),
                alpha = 0.5)
 ```
 
 ```{r warning=F, message=F}
 # https://www.tidymodels.org/learn/work/tune-svm/
 augment(recipe_res) %>%
-  ggplot(aes(MD.Q1.Count, .pred_Yes, color = fSuicide)) +
+  ggplot(aes(MD.Q1.Count, .pred_Yes, color = fSuic)) +
   geom_point(show.legend = FALSE) +
-  facet_wrap(~fSuicide)
+  facet_wrap(~fSuic)
 ```
 
 
