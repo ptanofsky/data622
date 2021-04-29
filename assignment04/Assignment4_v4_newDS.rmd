@@ -146,37 +146,9 @@ formula_res
 
 
 ```{r warning=F, message=F}
-# The .metrics column contains tibbles of the performance metrics for each tuning parameter combination
-formula_res %>%
-  select(.metrics) %>%
-  slice(1) %>%
-  pull(1)
-```
-
-```{r warning=F, message=F}
-# Get final resampling estimates
-estimates <- collect_metrics(formula_res)
-estimates
-
-# https://fahadtaimur.wordpress.com/2020/07/19/tuning-svm-in-r-2/
-formula_res %>%
-  collect_metrics() %>%
-  filter(.metric == "kap") %>%
-  mutate(cost = factor(cost)) %>%
-  ggplot(aes(cost, mean, color = cost)) +
-  geom_point() +
-  labs(y = "Kappa")
-```
-
-```{r warning=F, message=F}
-# Display top combinations
-show_best(formula_res, metric = "kap")
-```
-
-```{r warning=F, message=F}
 # Execute with a recipe
 set.seed(123)
-recipe_res <-svm_model %>%
+recipe_res <- svm_model %>%
   tune_grid(data_recipe,
     resamples = data_cv,
     metrics = roc_vals,
@@ -188,7 +160,7 @@ recipe_res
 
 ```{r warning=F, message=F}
 # Best setting
-show_best(recipe_res, metric = "kap")
+show_best(recipe_res, metric = "roc_auc")
 ```
 
 ```{r warning=F, message=F}
